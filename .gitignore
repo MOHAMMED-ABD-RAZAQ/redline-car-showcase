@@ -1,0 +1,19 @@
+# Only the page, its tools, the skill and the docs are published.
+# Car models stay local: most licenses (Sketchfab Standard included) forbid sharing the file itself.
+/*
+!/.gitignore
+!/.github/
+!/index.html
+!/README.md
+!/LICENSE
+!/docs/
+!/assets/
+/assets/*
+!/assets/README.md
+!/tools/
+/tools/*
+!/tools/build-model.mjs
+!/tools/inspect-model.mjs
+!/tools/package.json
+!/tools/package-lock.json
+.DS_Store

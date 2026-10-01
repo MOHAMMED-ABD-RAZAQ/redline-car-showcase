@@ -1,0 +1,1872 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Redline — Challenger SRT Hellcat Widebody · Hellraisin</title>
+<meta name="description" content="Redline: a scroll-driven 3D showcase for the Challenger SRT Hellcat Widebody. Designed and built by Mohammed Abd Alrazaq with three.js and Web Audio.">
+<meta name="author" content="Mohammed Abd Alrazaq">
+<meta name="theme-color" content="#120d0f">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Redline — a scroll-driven 3D car showcase by Mohammed Abd Alrazaq">
+<meta property="og:description" content="Scroll it, take it apart, paint it, start the engine. Built with three.js and Web Audio.">
+<meta property="og:image" content="https://raw.githubusercontent.com/MOHAMMED-ABD-RAZAQ/redline-car-showcase/main/docs/preview.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Alexandria:wght@300;500;700;800&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #120d0f;
+    --ink: #f6efe9;
+    --dim: #b9aaa3;
+    --plum: #e6a983;
+    --plum-deep: #4a1838;
+    --ease-out: cubic-bezier(.16, 1, .3, 1);
+    --pad: clamp(1.25rem, 5vw, 4.5rem);
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  html, body { margin: 0; background: var(--bg); color: var(--ink); }
+  body { font-family: "IBM Plex Sans", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  @media (pointer: fine) { body.has-cursor, body.has-cursor * { cursor: none; } }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+  #gl { position: fixed; inset: 0; width: 100%; height: 100%; display: block; z-index: 0; }
+  .vignette {
+    position: fixed; inset: 0; pointer-events: none; z-index: 1;
+    background: radial-gradient(120% 90% at 50% 55%, transparent 55%, rgba(8,4,6,.6) 100%);
+  }
+
+  nav {
+    position: fixed; inset: 0 0 auto 0; z-index: 10;
+    display: flex; justify-content: space-between; align-items: center; gap: 1rem;
+    padding: clamp(1rem, 2.4vw, 1.8rem) var(--pad);
+  }
+  .logo { font-family: Alexandria; font-weight: 800; font-size: 1.6rem; letter-spacing: -0.02em; color: var(--ink); text-decoration: none; }
+  .logo span { color: var(--plum); }
+  .brand { display: flex; align-items: center; gap: .9rem; }
+  .maker {
+    color: var(--dim); font-size: .85rem; text-decoration: none; padding-inline-start: .9rem;
+    border-inline-start: 1px solid rgba(243,239,248,.22); transition: color .3s var(--ease-out);
+  }
+  .maker:hover { color: var(--ink); }
+  @media (max-width: 860px) { .maker { display: none; } }
+  .links { display: flex; gap: .3rem; align-items: center; }
+  .links a {
+    color: var(--dim); text-decoration: none; font-size: .92rem; padding: .5rem .85rem; border-radius: 999px;
+    transition: color .3s var(--ease-out), background .3s var(--ease-out);
+  }
+  .links a:hover, .links a.on { color: var(--ink); background: rgba(243,239,248,.07); }
+  .links a.book { color: var(--ink); border: 1px solid rgba(243,239,248,.25); margin-inline-start: .5rem; }
+  @media (max-width: 860px) { .links a:not(.book) { display: none; } }
+  /* master sound toggle: the bars move while the page can actually be heard */
+  .snd {
+    display: inline-flex; align-items: center; justify-content: center; gap: 3px; width: 2.6rem; height: 2.6rem;
+    padding: 0; border: 0; border-radius: 999px; background: none; color: var(--dim); cursor: pointer;
+    transition: color .3s var(--ease-out), background .3s var(--ease-out);
+  }
+  .snd:hover { color: var(--ink); background: rgba(243,239,248,.07); }
+  .snd:focus-visible { outline: 2px solid var(--plum); outline-offset: 2px; }
+  .snd i { width: 2px; height: 14px; border-radius: 1px; background: currentColor; transform: scaleY(.2); transition: transform .4s var(--ease-out); }
+  .snd[aria-pressed="true"] { color: var(--ink); }
+  .snd[aria-pressed="true"] i { animation: eq .9s ease-in-out infinite alternate; }
+  .snd[aria-pressed="true"] i:nth-child(2) { animation-duration: .7s; animation-delay: -.3s; }
+  .snd[aria-pressed="true"] i:nth-child(3) { animation-duration: 1.1s; animation-delay: -.6s; }
+  .snd[aria-pressed="true"] i:nth-child(4) { animation-duration: .8s; animation-delay: -.15s; }
+  @keyframes eq { from { transform: scaleY(.25); } to { transform: scaleY(1); } }
+  @media (prefers-reduced-motion: reduce) { .snd[aria-pressed="true"] i { animation: none; transform: scaleY(.7); } }
+
+  .scene { position: relative; z-index: 2; }
+  .pin { position: sticky; top: 0; height: 100vh; height: 100svh; overflow: hidden; }
+
+  .copy {
+    position: absolute; inset-inline-start: var(--pad); max-width: min(34rem, 88vw);
+    will-change: opacity, transform, filter;
+  }
+  .copy.top { top: clamp(6rem, 17vh, 10rem); }
+  .copy.bottom { bottom: clamp(3rem, 11vh, 6.5rem); }
+  .copy.mid { top: 50%; transform: translateY(-50%); }
+
+  h1, h2, h3 { font-family: Alexandria; font-weight: 700; margin: 0; letter-spacing: -0.02em; line-height: 1.05; text-wrap: balance; }
+  h1 { font-size: clamp(3rem, 8.4vw, 6rem); }
+  h2 { font-size: clamp(2.3rem, 5.6vw, 4.4rem); }
+  h1 em, h2 em { font-style: normal; color: var(--plum); }
+  .lede { margin: 1.3rem 0 0; font-size: clamp(1rem, 1.35vw, 1.18rem); line-height: 1.8; color: rgba(246,239,233,.86); max-width: 30rem; }
+
+  .hint {
+    position: absolute; bottom: clamp(1.5rem, 5vh, 3rem); inset-inline-start: var(--pad);
+    display: flex; align-items: center; gap: .8rem; font-size: .92rem; color: var(--dim);
+  }
+  .mouse { width: 22px; height: 34px; border: 1.5px solid rgba(243,239,248,.55); border-radius: 12px; position: relative; }
+  .mouse::after {
+    content: ""; position: absolute; left: 50%; top: 7px; width: 3px; height: 7px; margin-left: -1.5px;
+    border-radius: 2px; background: var(--ink); animation: wheel 1.8s var(--ease-out) infinite;
+  }
+  @keyframes wheel { 0% { transform: translateY(0); opacity: 1; } 80% { transform: translateY(10px); opacity: 0; } 100% { opacity: 0; } }
+  .paint-now { position: absolute; bottom: clamp(1.5rem, 5vh, 3rem); inset-inline-end: var(--pad); color: var(--dim); font-size: .92rem; }
+  .paint-now b { color: var(--ink); font-weight: 500; }
+
+  /* exploded view callouts */
+  .callouts { position: absolute; inset: 0; pointer-events: none; }
+  .callout { position: absolute; top: 0; left: 0; opacity: 0; will-change: transform, opacity; }
+  .callout .dot { position: absolute; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 50%; background: var(--plum); box-shadow: 0 0 0 5px rgba(230,169,131,.2); }
+  .callout .card {
+    position: absolute; top: -10px; left: 22px; width: max-content; max-width: 15rem;
+    padding: .7rem .95rem; border-radius: 10px; background: rgba(20,13,15,.82); border: 1px solid rgba(243,239,248,.12);
+    backdrop-filter: blur(8px);
+  }
+  .callout.flip .card { left: auto; right: 22px; }
+  .callout .card::before { content: ""; position: absolute; top: 15px; right: 100%; width: 16px; height: 1px; background: rgba(230,169,131,.6); }
+  .callout.flip .card::before { right: auto; left: 100%; }
+  .callout b { display: block; font: 500 .98rem Alexandria; margin-bottom: .2rem; }
+  .callout span { font-size: .85rem; color: var(--dim); line-height: 1.6; }
+
+  /* specs */
+  .stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(1.5rem, 3vw, 2.6rem) clamp(1.5rem, 4vw, 3.5rem); margin-top: 2.4rem; }
+  .stat b { display: block; font: 300 clamp(3rem, 6.4vw, 5.4rem)/0.95 Alexandria; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; }
+  .stat span { display: block; margin-top: .5rem; color: var(--dim); font-size: .95rem; }
+  .stat i { display: block; height: 2px; margin-top: .9rem; background: rgba(243,239,248,.1); }
+  .stat i::after { content: ""; display: block; height: 100%; background: var(--plum); transform-origin: left; transform: scaleX(var(--k, 0)); }
+
+  /* studio */
+  .studio-ui { position: absolute; inset: auto var(--pad) clamp(2rem, 7vh, 4rem) var(--pad); display: flex; justify-content: space-between; align-items: flex-end; gap: 2rem; flex-wrap: wrap; }
+  .paint-title b { display: block; font: 700 clamp(1.8rem, 3.6vw, 2.8rem)/1 Alexandria; letter-spacing: -0.02em; }
+  .paint-title span { color: var(--dim); font-size: .95rem; }
+  .swatches { display: flex; gap: .7rem; flex-wrap: wrap; direction: ltr; }
+  .swatches button {
+    width: 40px; height: 40px; border-radius: 50%; padding: 0; border: 0; background: var(--c); position: relative;
+    box-shadow: inset 0 2px 6px rgba(255,255,255,.25), inset 0 -5px 10px rgba(0,0,0,.45), 0 6px 14px rgba(0,0,0,.45);
+    transition: transform .45s var(--ease-out);
+  }
+  .swatches button::after {
+    content: ""; position: absolute; inset: -6px; border-radius: 50%; border: 1.5px solid var(--ink);
+    opacity: 0; transform: scale(.8); transition: opacity .35s var(--ease-out), transform .45s var(--ease-out);
+  }
+  .swatches button:hover { transform: translateY(-3px); }
+  .swatches button[aria-pressed="true"]::after { opacity: 1; transform: scale(1); }
+  .swatches button:focus-visible { outline: 2px solid var(--plum); outline-offset: 7px; }
+  .drag-zone { position: absolute; inset: 18% 0 22% 0; touch-action: pan-y; }
+
+  /* sound */
+  .sound-ui { display: flex; align-items: center; gap: 1.6rem; margin-top: 2.2rem; flex-wrap: wrap; }
+  .pedal {
+    position: relative; width: 132px; height: 132px; border-radius: 50%; border: 0; padding: 0;
+    font: 700 1.05rem Alexandria; color: #1f120d; background: var(--plum);
+    box-shadow: 0 14px 30px -12px rgba(0,0,0,.8), inset 0 -6px 14px rgba(0,0,0,.25);
+    transition: transform .25s var(--ease-out), background .3s;
+    user-select: none; -webkit-user-select: none; touch-action: none;
+  }
+  .pedal:active, .pedal.down { transform: scale(.94); }
+  .pedal:focus-visible { outline: 2px solid var(--ink); outline-offset: 6px; }
+  .pedal .ring { position: absolute; inset: -10px; border-radius: 50%; border: 1.5px solid rgba(230,169,131,.5); transform: scale(var(--pulse, 1)); }
+  .tach { position: relative; width: clamp(170px, 18vw, 220px); aspect-ratio: 1; direction: ltr; }
+  .tach svg { width: 100%; height: 100%; overflow: visible; }
+  .tach .arc { fill: none; stroke-width: 7; transform: rotate(135deg); transform-origin: 100px 100px; }
+  .tach .track { stroke: rgba(243,239,248,.1); stroke-dasharray: 75 100; }
+  .tach .red { stroke: #d9483b; stroke-dasharray: 0 64.29 10.71 100; opacity: .55; }
+  .tach .fill { stroke: var(--plum); stroke-dasharray: 0 100; stroke-linecap: round; }
+  .tach #tachTicks line { stroke: rgba(243,239,248,.45); stroke-width: 1.5; }
+  .tach #tachTicks text { fill: var(--dim); font: 500 11px Alexandria; text-anchor: middle; dominant-baseline: middle; }
+  .tach #needle { transform-origin: 100px 100px; transform: rotate(135deg); }
+  .tach #needle line { stroke: var(--ink); stroke-width: 2.5; stroke-linecap: round; }
+  .tach #needle circle { fill: var(--ink); }
+  .tach .read { position: absolute; inset: auto 0 14% 0; text-align: center; }
+  .tach .read b { display: block; font: 300 clamp(1.6rem, 2.6vw, 2.1rem)/1 Alexandria; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+  .tach .read small { color: var(--dim); font-size: .75rem; letter-spacing: .08em; }
+  .kill { margin-top: 1.2rem; background: none; border: 0; color: var(--dim); font: 400 .9rem "IBM Plex Sans"; text-decoration: underline; text-underline-offset: 4px; padding: .3rem 0; }
+  .kill:hover { color: var(--ink); }
+  .kill[hidden] { display: none; }
+
+  /* finale */
+  .speed { position: absolute; top: 50%; inset-inline-end: var(--pad); transform: translateY(-50%); text-align: right; pointer-events: none; }
+  .speed b { display: block; font: 300 clamp(4rem, 11vw, 8.5rem)/0.9 Alexandria; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; }
+  .speed small { font-size: .95rem; color: var(--dim); }
+  .cta-row { display: flex; gap: .8rem; margin-top: 2rem; flex-wrap: wrap; }
+  .btn {
+    font: 500 1rem "IBM Plex Sans"; color: #1f120d; background: var(--plum);
+    padding: .95rem 1.6rem; border-radius: 999px; border: 0; text-decoration: none;
+    box-shadow: 0 10px 24px -10px rgba(0,0,0,.7);
+    transition: transform .5s var(--ease-out), box-shadow .5s var(--ease-out);
+  }
+  .btn:hover { transform: translateY(-2px); box-shadow: 0 16px 30px -12px rgba(0,0,0,.8); }
+  .btn.ghost { background: transparent; color: var(--ink); border: 1px solid rgba(243,239,248,.3); box-shadow: none; }
+  .btn.ghost:hover { border-color: var(--ink); }
+
+  .progress { position: fixed; z-index: 10; inset: auto 0 0 0; height: 2px; background: rgba(243,239,248,.06); }
+  .progress i { display: block; height: 100%; background: var(--plum); transform-origin: left; transform: scaleX(0); }
+
+  footer {
+    position: relative; z-index: 2; background: #0b0910; border-top: 1px solid rgba(243,239,248,.08);
+    padding: clamp(3rem, 8vh, 5rem) var(--pad) 2.5rem;
+    display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 3rem clamp(2rem, 5vw, 5rem); align-items: start;
+  }
+  footer h2 { font-size: clamp(2rem, 4.4vw, 3.4rem); }
+  footer p { color: var(--dim); line-height: 1.8; margin: 1rem 0 0; max-width: 32rem; }
+  .foot-links { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2.2rem clamp(1.5rem, 3vw, 2.5rem); padding-top: .5rem; }
+  .foot-links h3 { font: 500 1.05rem Alexandria; letter-spacing: -0.01em; margin: 0 0 1rem; }
+  .foot-links ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 1rem; }
+  .foot-links a { color: var(--ink); text-decoration: underline; text-decoration-color: rgba(230,169,131,.45); text-underline-offset: 4px; transition: text-decoration-color .3s var(--ease-out); }
+  .foot-links a:hover { text-decoration-color: var(--plum); }
+  .foot-links li span { display: block; margin-top: .25rem; color: var(--dim); font-size: .86rem; line-height: 1.6; }
+  .sig { grid-column: 1 / -1; padding-top: 1.6rem; border-top: 1px solid rgba(243,239,248,.08); color: var(--dim); font-size: 1rem; }
+  .sig a { margin-inline-start: .3rem; font: 500 1.15rem Alexandria; letter-spacing: -0.01em; color: var(--ink); text-decoration: underline; text-decoration-color: rgba(230,169,131,.45); text-underline-offset: 5px; transition: text-decoration-color .3s var(--ease-out); }
+  .sig a:hover { text-decoration-color: var(--plum); }
+  footer .legal { grid-column: 1 / -1; max-width: none; margin: -1.6rem 0 0; font-size: .8rem; color: #8d859c; }
+  @media (max-width: 760px) { footer, .foot-links { grid-template-columns: 1fr; } }
+
+  #cursor {
+    position: fixed; z-index: 30; top: 0; left: 0; pointer-events: none;
+    width: 104px; height: 104px; margin: -52px 0 0 -52px; display: grid; place-items: center;
+  }
+  #cursor .ring {
+    position: absolute; inset: 0; border-radius: 50%; border: 4px solid rgba(243,239,248,.8);
+    transform: scale(.365); transition: transform .5s var(--ease-out), background .4s, border-color .4s;
+  }
+  #cursor span { position: relative; font-size: .78rem; font-weight: 500; white-space: nowrap; opacity: 0; transform: scale(.7); transition: opacity .3s, transform .45s var(--ease-out); color: #1f120d; }
+  #cursor.on-car .ring { transform: scale(1); background: var(--plum); border-color: var(--plum); }
+  #cursor.on-car span { opacity: 1; transform: scale(1); }
+  @media (pointer: coarse) { #cursor { display: none; } }
+
+  #loader {
+    position: fixed; inset: 0; z-index: 40; background: var(--bg);
+    display: grid; place-content: center; gap: 1.2rem; text-align: center;
+    transition: opacity 1s var(--ease-out), visibility 1s;
+  }
+  #loader.done { opacity: 0; visibility: hidden; }
+  #loader .logo { font-size: 3rem; }
+  #loader .bar { width: 220px; height: 2px; background: rgba(243,239,248,.12); overflow: hidden; }
+  #loader .bar i { display: block; height: 100%; background: var(--plum); transform: scaleX(0); transform-origin: left; transition: transform .3s var(--ease-out); }
+  #loader p { margin: 0; color: var(--dim); font-size: .9rem; font-variant-numeric: tabular-nums; }
+  #loader .by { margin-top: 1.6rem; color: #8d859c; font-size: .82rem; }
+
+  [tabindex="-1"]:focus { outline: none; }
+  @media (pointer: coarse) { .hint .mouse { display: none; } }
+
+  /* phones and portrait tablets: copy on top, the car framed whole below it, controls at the bottom */
+  @media (max-width: 720px), (max-aspect-ratio: 4/5) {
+    .copy.top, #specs .copy, #sound .copy { top: max(5.2rem, 12vh); }
+    #specs .copy, #sound .copy { transform: none; }
+    .stats { margin-top: 1.4rem; gap: 1.2rem 1.4rem; }
+    #sound .copy { bottom: max(1.25rem, 3.5vh); inset-inline-end: var(--pad); max-width: none; display: flex; flex-direction: column; }
+    #sound .lede { max-width: 26rem; }
+    .sound-ui { margin-top: auto; justify-content: center; gap: 1rem; flex-wrap: nowrap; }
+    .pedal { width: 120px; height: 120px; }
+    .tach { width: 150px; }
+    .kill { align-self: center; margin-top: .5rem; }
+    .speed { top: max(5.2rem, 12vh); transform: none; }
+    .studio-ui { flex-direction: column; align-items: stretch; gap: 1.2rem; }
+    .swatches { justify-content: space-between; flex-wrap: nowrap; gap: .3rem; }
+    .swatches button { width: 36px; height: 36px; }
+    .callouts { display: none; }
+  }
+  @media (min-width: 600px) and (max-aspect-ratio: 4/5) {
+    .pedal { width: 148px; height: 148px; font-size: 1.15rem; }
+    .tach { width: 196px; }
+  }
+
+  /* landscape phones: everything has to fit a short viewport */
+  @media (max-height: 520px) and (min-aspect-ratio: 4/5) {
+    nav { padding-block: .7rem; }
+    h1 { font-size: clamp(2rem, 10.5vh, 3.2rem); }
+    h2 { font-size: clamp(1.7rem, 9vh, 2.6rem); }
+    .lede { margin-top: .7rem; font-size: .92rem; line-height: 1.6; }
+    .copy.top { top: max(3.8rem, 15vh); }
+    .copy { max-width: min(30rem, 50vw); }
+    .stats { margin-top: .9rem; gap: .6rem 2rem; }
+    .stat b { font-size: clamp(2rem, 10vh, 3rem); }
+    .stat span { margin-top: .25rem; font-size: .85rem; }
+    .stat i { margin-top: .45rem; }
+    .sound-ui { margin-top: .9rem; gap: 1rem; }
+    .pedal { width: 88px; height: 88px; font-size: .85rem; }
+    .tach { width: 116px; }
+    .kill { margin-top: .3rem; }
+    .speed b { font-size: clamp(2.6rem, 15vh, 4.5rem); }
+    .cta-row { margin-top: 1rem; }
+    .btn { padding: .7rem 1.2rem; }
+    .hint { display: none; }
+    .studio-ui { bottom: 1rem; }
+    .paint-title b { font-size: 1.5rem; }
+  }
+</style>
+</head>
+<body>
+
+<div id="loader" role="status" aria-live="polite">
+  <div class="logo">Redline<span>.</span></div>
+  <div class="bar"><i></i></div>
+  <p>Warming up the engine… <span id="pct">0</span>%</p>
+  <p class="by">A demo by Mohammed Abd Alrazaq</p>
+</div>
+
+<div id="cursor" aria-hidden="true"><div class="ring"></div><span id="cursorLabel">Drag or click</span></div>
+
+<canvas id="gl" aria-hidden="true"></canvas>
+<div class="vignette"></div>
+
+<nav>
+  <div class="brand">
+    <a class="logo" href="#hero">Redline<span>.</span></a>
+    <a class="maker" href="https://github.com/MOHAMMED-ABD-RAZAQ" target="_blank" rel="noopener">by Mohammed Abd Alrazaq</a>
+  </div>
+  <div class="links">
+    <a href="#hemi" data-for="hemi">Teardown</a>
+    <a href="#specs" data-for="specs">Specs</a>
+    <a href="#studio" data-for="studio">Colors</a>
+    <a href="#sound" data-for="sound">Sound</a>
+    <button class="snd" id="snd" type="button" aria-label="Sound" aria-pressed="false"><i></i><i></i><i></i><i></i></button>
+    <a class="book" href="#book">Book a drive</a>
+  </div>
+</nav>
+
+<main>
+  <section class="scene" id="hero" data-vh="190">
+    <div class="pin">
+      <div class="copy top" data-in="-1" data-out="0.42">
+        <h1>The eggplant<br>that <em>roars.</em></h1>
+        <p class="lede">The 2020 Challenger SRT Hellcat Widebody in Hellraisin, a deep burgundy-eggplant. <span data-touch="Tap it to change its color.">Drag to spin it, click to change its color.</span></p>
+      </div>
+      <div class="hint" data-in="-1" data-out="0.12"><div class="mouse"></div><span data-touch="Swipe up to start it up">Scroll to start it up</span></div>
+      <div class="paint-now" data-in="-1" data-out="0.42">Color: <b id="heroPaint">Hellraisin</b></div>
+    </div>
+  </section>
+
+  <section class="scene" id="hemi" data-vh="320">
+    <div class="pin">
+      <div class="copy top" data-in="-1" data-out="1.03">
+        <h2>Let’s take it<br><em>apart.</em></h2>
+        <p class="lede">Every bolt accounted for. Keep scrolling and watch it come back together.</p>
+      </div>
+      <div class="callouts" id="callouts">
+        <div class="callout flip" data-anchor="engine"><div class="dot"></div><div class="card"><b>6.2L Supercharged HEMI® V8</b><span>717 hp, fed by a 2.4 L blower.</span></div></div>
+        <div class="callout flip" data-anchor="wheel"><div class="dot"></div><div class="card"><b>20 × 11 in Wheels</b><span>305 tires under the widebody flares, Brembo brakes.</span></div></div>
+        <div class="callout flip" data-anchor="cabin"><div class="dot"></div><div class="card"><b>Uconnect 8.4</b><span>A leather cabin for five.</span></div></div>
+        <div class="callout" data-anchor="exhaust"><div class="dot"></div><div class="card"><b>Dual Exhaust</b><span>Twin exhaust you feel in your chest.</span></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="scene" id="specs" data-vh="230">
+    <div class="pin">
+      <div class="copy mid" data-in="-1" data-out="1.03">
+        <h2>Numbers that <em>talk.</em></h2>
+        <div class="stats" id="stats">
+          <div class="stat" data-to="717"><b>0</b><span>Horsepower</span><i></i></div>
+          <div class="stat" data-to="889"><b>0</b><span>N·m of torque</span><i></i></div>
+          <div class="stat" data-to="3.7" data-dec="1" data-from="9"><b>0</b><span>Seconds, 0–100 km/h</span><i></i></div>
+          <div class="stat" data-to="8"><b>0</b><span>Speed automatic</span><i></i></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="scene" id="studio" data-vh="200">
+    <div class="pin">
+      <div class="copy top" data-in="-1" data-out="1.03">
+        <h2>Pick your <em>color.</em></h2>
+        <p class="lede">Drag left and right to spin it a full 360°.</p>
+      </div>
+      <div class="drag-zone" id="dragZone" aria-label="Drag to rotate the car"></div>
+      <div class="studio-ui" data-in="-1" data-out="1.12">
+        <div class="paint-title"><b id="paintName">Hellraisin</b><span id="paintAr">Burgundy-eggplant that comes alive in the light</span></div>
+        <div class="swatches" id="swatches" role="group" aria-label="Car color"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="scene" id="sound" data-vh="200">
+    <div class="pin">
+      <div class="copy mid" data-in="-1" data-out="1.03">
+        <h2>Hear the <em>roar.</em></h2>
+        <p class="lede" id="soundLede">Start the engine, then press and hold the pedal. Turn your speakers up.</p>
+        <div class="sound-ui">
+          <button class="pedal" id="pedal" aria-describedby="soundLede"><span class="ring"></span><span id="pedalLabel">Start engine</span></button>
+          <div class="tach" aria-hidden="true">
+            <svg viewBox="0 0 200 200">
+              <circle class="arc track" cx="100" cy="100" r="84" pathLength="100" />
+              <circle class="arc red" cx="100" cy="100" r="84" pathLength="100" />
+              <circle class="arc fill" id="tachFill" cx="100" cy="100" r="84" pathLength="100" />
+              <g id="tachTicks"></g>
+              <g id="needle"><line x1="100" y1="100" x2="172" y2="100" /><circle cx="100" cy="100" r="5" /></g>
+            </svg>
+            <div class="read"><b id="rpm">0</b><small>RPM</small></div>
+          </div>
+        </div>
+        <button class="kill" id="kill" hidden>Kill engine</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="scene" id="finale" data-vh="340">
+    <div class="pin">
+      <div class="copy bottom" data-in="0.1" data-out="1.12">
+        <h2>Now… <em>go.</em></h2>
+        <div class="cta-row">
+          <a class="btn" href="#book">Book a test drive</a>
+          <a class="btn ghost" href="#specs">Back to specs</a>
+        </div>
+      </div>
+      <div class="speed" data-in="0.08" data-out="1.03" aria-hidden="true"><b id="kmh">0</b><small>km/h</small></div>
+    </div>
+  </section>
+</main>
+
+<footer id="book">
+  <div>
+    <h2>Test drives start in Baghdad.</h2>
+    <p>A demo build: three.js, a real glTF model, bloom and Web Audio. Every motion on this page is driven by your scroll and your mouse.</p>
+    <div class="cta-row"><a class="btn" href="#hero">Back to the start</a></div>
+  </div>
+  <div class="foot-links">
+    <section>
+      <h3>Build your own</h3>
+      <ul>
+        <li><a href="https://github.com/MOHAMMED-ABD-RAZAQ/redline-car-showcase" target="_blank" rel="noopener">Source code on GitHub</a><span>One HTML file, MIT licensed.</span></li>
+        <li><a href="https://github.com/MOHAMMED-ABD-RAZAQ/redline-car-showcase/blob/main/.github/skills/car-showcase/SKILL.md" target="_blank" rel="noopener">Car showcase skill</a><span>Point your coding agent at it to rebuild this page for another car.</span></li>
+      </ul>
+    </section>
+    <section>
+      <h3>Resources</h3>
+      <ul>
+        <li><a href="https://sketchfab.com/3d-models/dodge-challenger-srt-hellcat-widebody-f5f86380ecf049da8aa73ca969555e0f" target="_blank" rel="noopener">Challenger SRT Hellcat Widebody</a><span>3D model by RPMRender on Sketchfab, <a href="https://sketchfab.com/licenses" target="_blank" rel="noopener">Standard license</a>. Repainted and split into panels here.</span></li>
+        <li><a href="https://threejs.org" target="_blank" rel="noopener">three.js</a> and <a href="https://gltf-transform.dev" target="_blank" rel="noopener">glTF Transform</a><span>Rendering, and the model cleanup and compression.</span></li>
+        <li><a href="https://fonts.google.com/specimen/Alexandria" target="_blank" rel="noopener">Alexandria</a> and <a href="https://fonts.google.com/specimen/IBM+Plex+Sans" target="_blank" rel="noopener">IBM Plex Sans</a><span>Type, via Google Fonts.</span></li>
+      </ul>
+    </section>
+  </div>
+  <div class="sig">Designed and built by <a href="https://github.com/MOHAMMED-ABD-RAZAQ" target="_blank" rel="noopener">Mohammed Abd Alrazaq</a></div>
+  <p class="legal">The HEMI in the teardown, the engine sound and the scroll ticks are built in code. The car model is licensed for this page only: don’t download, extract or reuse it as a stand-alone file. Dodge, Challenger, Hellcat, T/A and HEMI are trademarks of their respective owners. This page is a demo only.</p>
+</footer>
+
+<div class="progress"><i id="bar"></i></div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { Reflector } from 'three/addons/objects/Reflector.js';
+
+console.log('%cRedline.%c  Designed and built by Mohammed Abd Alrazaq · https://github.com/MOHAMMED-ABD-RAZAQ', 'font: 800 20px Alexandria, sans-serif; color: #e6a983', 'color: #b9aaa3');
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const finePointer = matchMedia('(pointer: fine)').matches;
+const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const smooth = (a, b, v) => { const t = clamp((v - a) / (b - a)); return t * t * (3 - 2 * t); };
+const damp = (dt, k) => 1 - Math.exp(-dt * k);
+const wrapAngle = a => Math.atan2(Math.sin(a), Math.cos(a));
+
+/* ================= renderer / scene ================= */
+const canvas = document.getElementById('gl');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75));
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+
+const scene = new THREE.Scene();
+// golden-hour lot: the sun has just touched the horizon, the sky is still lit,
+// so the paint reads as Hellraisin instead of black
+const SUN_DIR = new THREE.Vector3(-0.72, 0.1, 0.69).normalize();
+const HORIZON = new THREE.Color(0x8e6a66);
+scene.background = HORIZON;
+scene.fog = new THREE.Fog(HORIZON, 22, 70);
+
+const coveMat = new THREE.ShaderMaterial({
+  side: THREE.BackSide, depthWrite: false, fog: false,
+  uniforms: {
+    uTop: { value: new THREE.Color(0x232a4a) }, uMid: { value: HORIZON }, uGlow: { value: new THREE.Color(0xffa25e) },
+    uGround: { value: new THREE.Color(0x2a2022) }, uSun: { value: SUN_DIR }, uDisc: { value: 1 }
+  },
+  vertexShader: `varying vec3 vW; void main(){ vW = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
+  fragmentShader: `varying vec3 vW; uniform vec3 uTop, uMid, uGlow, uGround, uSun; uniform float uDisc;
+    void main(){ float y = vW.y; float s = max(dot(vW, uSun), 0.0);
+      vec3 c = mix(uMid, uTop, smoothstep(0.0, 0.6, y));
+      c = mix(c, vec3(0.42, 0.33, 0.44), smoothstep(0.08, 0.3, y) * (1.0 - smoothstep(0.3, 0.75, y)) * 0.35);
+      c += uGlow * (0.5 * exp(-abs(y - 0.03) * 9.0) * (0.35 + 0.65 * pow(s, 2.0)) + 0.3 * pow(s, 40.0));
+      c += vec3(1.0, 0.8, 0.55) * smoothstep(0.99955, 0.9998, s) * 1.4 * uDisc;
+      c = mix(c, uGround, smoothstep(0.0, -0.04, y));
+      gl_FragColor = vec4(c, 1.0);
+      #include <colorspace_fragment>
+    }`
+});
+const cove = new THREE.Mesh(new THREE.SphereGeometry(60, 48, 24), coveMat);
+cove.renderOrder = -1;
+scene.add(cove);
+
+// night showroom floor: a real mirror pass under a dark lacquered skin.
+// The skin thickens with distance so the reflection melts into the cove instead of tiling.
+const mirror = new Reflector(new THREE.CircleGeometry(60, 64), { textureWidth: 1024, textureHeight: 1024, color: 0x8f8588, clipBias: 0.002 });
+mirror.rotation.x = -Math.PI / 2;
+scene.add(mirror);
+function radialAlpha() {
+  const c = document.createElement('canvas'); c.width = c.height = 256; const g = c.getContext('2d');
+  const gr = g.createRadialGradient(128, 128, 0, 128, 128, 128);
+  gr.addColorStop(0, '#9a9a9a'); gr.addColorStop(0.12, '#b4b4b4'); gr.addColorStop(0.35, '#f2f2f2'); gr.addColorStop(1, '#ffffff');
+  g.fillStyle = gr; g.fillRect(0, 0, 256, 256);
+  return new THREE.CanvasTexture(c);
+}
+const floor = new THREE.Mesh(
+  new THREE.CircleGeometry(60, 64),
+  new THREE.MeshStandardMaterial({ color: 0x3a3034, roughness: 0.62, metalness: 0.0, transparent: true, alphaMap: radialAlpha(), depthWrite: false })
+);
+floor.position.y = 0.001;
+floor.rotation.x = -Math.PI / 2;
+scene.add(floor);
+// faint seam lines, like poured slabs, instead of a sci-fi grid
+const grid = new THREE.GridHelper(120, 30, 0x5a4a4a, 0x5a4a4a);
+grid.position.y = 0.003;
+grid.material.transparent = true;
+grid.material.opacity = 0.28;
+scene.add(grid);
+
+// reflections come from the same dusk sky: no overhead panels, so the roof only picks up soft blue
+function studioEnv() {
+  const env = new THREE.Scene();
+  const u = THREE.UniformsUtils.clone(coveMat.uniforms);
+  u.uTop.value.set(0x1a2038); u.uDisc.value = 0;
+  env.add(new THREE.Mesh(new THREE.SphereGeometry(20, 32, 16), new THREE.ShaderMaterial({ side: THREE.BackSide, uniforms: u, vertexShader: coveMat.vertexShader, fragmentShader: coveMat.fragmentShader })));
+  const sunCard = new THREE.Mesh(new THREE.CircleGeometry(1.6, 24), new THREE.MeshBasicMaterial({ color: new THREE.Color(0xffb070).multiplyScalar(2.2), side: THREE.DoubleSide }));
+  sunCard.position.copy(SUN_DIR).multiplyScalar(18); sunCard.lookAt(0, 0, 0);
+  env.add(sunCard);
+  return pmrem.fromScene(env, 0.02).texture;
+}
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = studioEnv();
+scene.environmentIntensity = 0.75;
+
+const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 140);
+
+scene.add(new THREE.HemisphereLight(0xb8c0e8, 0x3a2624, 1.15));
+// low golden sun from the front-left: long warm grazing light across the flanks
+const sun = new THREE.DirectionalLight(0xffb27a, 1.6);
+sun.position.copy(SUN_DIR).multiplyScalar(20).setY(3.2);
+scene.add(sun);
+// no key from behind: its grazing specular streaks across the flanks toward a front camera
+
+/* ================= car rig ================= */
+const carRoot = new THREE.Group();   // translates when driving
+const carYaw = new THREE.Group();    // mouse / drag rotation
+const carShake = new THREE.Group();  // engine vibration
+carRoot.add(carYaw); carYaw.add(carShake); scene.add(carRoot);
+
+const U = { explode: { value: 0 } };
+const ENGINE_SCALE = 0.82;
+const wheels = [];                    // { pivot, front, side, base }
+const pickMeshes = [];
+const rig = { heads: [], spots: [], beamMat: null, tailMats: [], lightAMats: [], paintMat: null, dims: null, anchors: {} };
+
+// each part leaves on its own beat: shell first, then trim, glass and the cabin, eased in and out
+const EXPLODE_HEAD = `attribute vec3 aOffset;
+attribute float aDelay;
+uniform float uExplode;
+float explodeK() {
+  float k = clamp((uExplode - aDelay) / 0.55, 0.0, 1.0);
+  return k * k * k * (k * (k * 6.0 - 15.0) + 10.0);
+}
+`;
+function addExplode(mat) {
+  mat.onBeforeCompile = (sh) => {
+    sh.uniforms.uExplode = U.explode;
+    sh.vertexShader = EXPLODE_HEAD + sh.vertexShader.replace(
+      '#include <begin_vertex>',
+      '#include <begin_vertex>\n  transformed += aOffset * explodeK();'
+    );
+  };
+  mat.customProgramCacheKey = () => 'explode';
+}
+
+// 2015+ Challenger: four LED halo rings, the inner pair glow amber as turn-signal DRLs.
+// The lamp is a photo whose own rings sit off-centre and deep in the chrome bowls, so from a three-quarter
+// view they read as crescents. The halos are real light-pipe rings instead (buildHalos); the photo is only
+// toned down here so its rings and lens glints don't ghost behind them. Bezel openings: |x|, y, radius in metres
+const RING_IN = { value: new THREE.Vector3(0.578, 0.684, 0.047) }, RING_OUT = { value: new THREE.Vector3(0.749, 0.681, 0.05) };
+// the low sun turns glossy curves into pin-point glints that bloom like extra lamps; cap them to a sheen
+const capDirectSpecular = (v) => `#include <lights_fragment_end>
+  reflectedLight.directSpecular = min(reflectedLight.directSpecular, vec3(${v}));
+  #ifdef USE_CLEARCOAT
+  clearcoatSpecularDirect = min(clearcoatSpecularDirect, vec3(${v}));
+  #endif`;
+function addHaloRings(mat) {
+  mat.roughness = Math.max(mat.roughness, 0.3);
+  mat.onBeforeCompile = (sh) => {
+    sh.uniforms.uExplode = U.explode; sh.uniforms.uRingIn = RING_IN; sh.uniforms.uRingOut = RING_OUT;
+    sh.vertexShader = EXPLODE_HEAD + 'varying vec3 vCar;\n' + sh.vertexShader.replace(
+      '#include <begin_vertex>',
+      '#include <begin_vertex>\n  vCar = position;\n  transformed += aOffset * explodeK();'
+    );
+    sh.fragmentShader = `uniform vec3 uRingIn, uRingOut;
+varying vec3 vCar;
+float lensCore(vec2 p, vec3 r) { return 1.0 - smoothstep(0.5, 0.7, length(p - r.xy) / r.z); }
+` + sh.fragmentShader.replace(
+      '#include <map_fragment>',
+      `#include <map_fragment>
+  vec2 lampP = vec2(abs(vCar.x), vCar.y);
+  // the photo's projector lens carries a bright sky reflection that reads as a stray white dot
+  diffuseColor.rgb *= 1.0 - 0.6 * max(lensCore(lampP, uRingIn), lensCore(lampP, uRingOut));
+  diffuseColor.rgb = min(diffuseColor.rgb * 0.7, vec3(0.36));`
+    ).replace(
+      '#include <emissivemap_fragment>',
+      // with the lights on, the housings pick up a faint glow from the rings
+      '#include <emissivemap_fragment>\n  totalEmissiveRadiance = emissive * diffuseColor.rgb * 0.3;'
+    ).replace('#include <lights_fragment_end>', capDirectSpecular('0.18'));
+  };
+  mat.customProgramCacheKey = () => 'explode-halo';
+}
+
+// T/A graphics on the paint, as on the 2017+ T/A: satin black hood, roof and decklid, and the side band.
+// The band starts in a point at the headlamp, rides the shoulder above the body crease across the fender
+// and the door, then sweeps up behind the rear side glass; T/A is cut out of it just ahead of the door
+function taLettersTexture() {
+  const c = document.createElement('canvas'); c.width = 512; c.height = 160;
+  const x = c.getContext('2d');
+  x.fillStyle = '#fff'; x.font = 'italic 900 150px "Arial Black", "Helvetica Neue", Arial, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle';
+  x.fillText('T/A', 256, 84);
+  const t = new THREE.CanvasTexture(c); t.anisotropy = 8;
+  return t;
+}
+const TA = { value: null };
+// height of the body crease along the car (car space), measured off the Hellcat: low at the nose,
+// level along the door, kicking up over the rear hips
+const TA_CREASE = `
+float creaseY(float z) {
+  float zs[9] = float[9](2.35, 2.0, 1.2, 0.6, -0.45, -0.6, -1.0, -1.2, -1.7);
+  float ys[9] = float[9](0.72, 0.757, 0.782, 0.792, 0.803, 0.808, 0.876, 0.889, 0.895);
+  if (z >= zs[0]) return ys[0];
+  for (int i = 1; i < 9; i++) if (z >= zs[i]) return mix(ys[i], ys[i - 1], (z - zs[i]) / (zs[i - 1] - zs[i]));
+  return ys[8];
+}
+`;
+function addPaint(mat) {
+  mat.onBeforeCompile = (sh) => {
+    sh.uniforms.uExplode = U.explode; sh.uniforms.uTA = TA;
+    sh.vertexShader = EXPLODE_HEAD + 'attribute float aDecal;\nvarying vec3 vCar, vCarN;\nvarying float vDecal;\n' + sh.vertexShader.replace(
+      '#include <begin_vertex>',
+      '#include <begin_vertex>\n  vCar = position; vCarN = objectNormal; vDecal = aDecal;\n  transformed += aOffset * explodeK();'
+    );
+    sh.fragmentShader = 'uniform sampler2D uTA;\nvarying vec3 vCar, vCarN;\nvarying float vDecal;\nfloat taDecal;\n' + TA_CREASE + sh.fragmentShader.replace(
+      '#include <map_fragment>',
+      `#include <map_fragment>
+  {
+    vec3 n = normalize(vCarN);
+    float z = vCar.z, y = vCar.y;
+    float ey = fwidth(y) + 1e-4, ez = fwidth(z) + 1e-4;
+    // the shoulder: the inclined strip between the body crease and the glass (or the fender top)
+    float shoulder = smoothstep(0.26, 0.34, n.y) * (1.0 - smoothstep(0.84, 0.9, n.y)) * smoothstep(0.22, 0.32, abs(n.x)) * step(0.55, abs(vCar.x));
+    // the crease is a hard edge in the normals; over the widebody flares it breaks up, so there the
+    // band's lower edge follows the measured crease line instead
+    float arch = max(1.0 - smoothstep(0.34, 0.42, abs(z - 1.6)), 1.0 - smoothstep(0.2, 0.28, abs(z + 1.42)));
+    float lower = smoothstep(-ey, ey, y - creaseY(z) + mix(0.03, -0.004, arch));
+    // a point at the headlamp in front; at the back it climbs the C-pillar and ends on a forward lean
+    float zEnd = -1.36 + (y - 0.89) * 0.75;
+    float ends = (1.0 - smoothstep(-ez, ez, z - 2.25)) * smoothstep(-ez, ez, z - zEnd);
+    float top = 1.0 - smoothstep(-ey, ey, y - mix(1.16, 1.03, smoothstep(-0.8, -0.7, z)));
+    float band = shoulder * lower * ends * top;
+    // T/A cut out of the band just ahead of the door, reading front to back on both sides
+    vec2 tuv = vec2((vCar.x > 0.0 ? 1.42 - z : z - 0.82) / 0.6, (y - 0.803) / 0.1875);
+    float letters = all(greaterThan(tuv, vec2(0.0))) && all(lessThan(tuv, vec2(1.0))) ? texture2D(uTA, tuv).a : 0.0;
+    taDecal = max(vDecal, band * (1.0 - letters));
+    diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.016, 0.015, 0.017), taDecal);
+  }`
+    ).replace(
+      '#include <roughnessmap_fragment>',
+      '#include <roughnessmap_fragment>\n  roughnessFactor = mix(roughnessFactor, 0.62, taDecal);'
+    ).replace(
+      '#include <metalnessmap_fragment>',
+      '#include <metalnessmap_fragment>\n  metalnessFactor = mix(metalnessFactor, 0.05, taDecal);'
+    ).replace(
+      '#include <lights_physical_fragment>',
+      '#include <lights_physical_fragment>\n  material.clearcoat *= 1.0 - 0.9 * taDecal;\n  material.clearcoatRoughness = mix(material.clearcoatRoughness, 0.6, taDecal);'
+    ).replace('#include <lights_fragment_end>', capDirectSpecular('0.35'));
+  };
+  mat.customProgramCacheKey = () => 'explode-paint-ta2';
+}
+
+function toFloatGeometry(src, keep) {
+  const g = new THREE.BufferGeometry();
+  for (const name of keep) {
+    const a = src.getAttribute(name);
+    if (!a) continue;
+    const arr = new Float32Array(a.count * a.itemSize);
+    for (let i = 0; i < a.count; i++) for (let k = 0; k < a.itemSize; k++) arr[i * a.itemSize + k] = a.getComponent(i, k);
+    g.setAttribute(name, new THREE.BufferAttribute(arr, a.itemSize));
+  }
+  if (src.index) g.setIndex(Array.from(src.index.array));
+  else g.setIndex([...Array(g.getAttribute('position').count).keys()]);
+  return g;
+}
+
+// compact copy of the listed triangles (only the vertices they use)
+function subGeometry(geo, tris) {
+  const idx = geo.index.array, n = geo.getAttribute('position').count;
+  const map = new Int32Array(n).fill(-1), order = [], out = new Uint32Array(tris.length * 3);
+  let k = 0;
+  for (const t of tris) for (let e = 0; e < 3; e++) { const v = idx[t * 3 + e]; if (map[v] < 0) { map[v] = order.length; order.push(v); } out[k++] = map[v]; }
+  const g = new THREE.BufferGeometry();
+  for (const [name, a] of Object.entries(geo.attributes)) {
+    const s = a.itemSize, arr = new Float32Array(order.length * s);
+    for (let i = 0; i < order.length; i++) for (let c = 0; c < s; c++) arr[i * s + c] = a.array[order[i] * s + c];
+    g.setAttribute(name, new THREE.BufferAttribute(arr, s));
+  }
+  g.setIndex(new THREE.BufferAttribute(out, 1));
+  return g;
+}
+
+// per-triangle flag for the loose hood skin inside the paint mesh (its own connected piece)
+function hoodTriangles(geo) {
+  const P = geo.getAttribute('position'), idx = geo.index.array, n = P.count, T = idx.length / 3;
+  const par = new Int32Array(n).map((_, i) => i);
+  const f = i => { while (par[i] !== i) { par[i] = par[par[i]]; i = par[i]; } return i; };
+  const u = (a, b) => { a = f(a); b = f(b); if (a !== b) par[a] = b; };
+  const seen = new Map();
+  for (let i = 0; i < n; i++) { const k = Math.round(P.getX(i) * 2000) + ',' + Math.round(P.getY(i) * 2000) + ',' + Math.round(P.getZ(i) * 2000); const j = seen.get(k); if (j === undefined) seen.set(k, i); else u(i, j); }
+  for (let t = 0; t < T; t++) { u(idx[t * 3], idx[t * 3 + 1]); u(idx[t * 3], idx[t * 3 + 2]); }
+  const box = new Map();
+  for (let i = 0; i < n; i++) { const r = f(i); let b = box.get(r); if (!b) box.set(r, b = [1e9, -1e9, 1e9, -1e9, 1e9, -1e9, 0]); const x = P.getX(i), y = P.getY(i), z = P.getZ(i); b[0] = Math.min(b[0], x); b[1] = Math.max(b[1], x); b[2] = Math.min(b[2], y); b[3] = Math.max(b[3], y); b[4] = Math.min(b[4], z); b[5] = Math.max(b[5], z); b[6]++; }
+  const isHood = new Map();
+  for (const [r, b] of box) isHood.set(r, b[6] > 300 && b[4] > 0.85 && b[5] < 2.45 && b[2] > 0.7 && Math.max(-b[0], b[1]) < 0.85);
+  const out = new Uint8Array(T);
+  for (let t = 0; t < T; t++) out[t] = isHood.get(f(idx[t * 3])) ? 1 : 0;
+  return out;
+}
+
+// exploded view: every panel leaves along its own axis, on its own beat
+const PANELS = {
+  hood:       { off: [0, 1.25, 0.5],    d: 0.0 },
+  trunk:      { off: [0, 0.95, -0.5],   d: 0.04 },
+  nose:       { off: [0, 0.04, 1.05],   d: 0.08 },
+  tail:       { off: [0, 0.04, -1.0],   d: 0.1 },
+  doorL:      { off: [1.05, 0.1, 0.04], d: 0.13 }, doorR:    { off: [-1.05, 0.1, 0.04], d: 0.13 },
+  fenderL:    { off: [0.7, 0.12, 0.42], d: 0.17 }, fenderR:  { off: [-0.7, 0.12, 0.42], d: 0.17 },
+  quarterL:   { off: [0.7, 0.1, -0.42], d: 0.19 }, quarterR: { off: [-0.7, 0.1, -0.42], d: 0.19 },
+  windshield: { off: [0, 0.72, 0.3],    d: 0.22 },
+  backlight:  { off: [0, 0.72, -0.35],  d: 0.23 },
+  roof:       { off: [0, 1.0, 0],       d: 0.26 },
+  cabin:      { off: [0, 0.3, 0],       d: 0.32 },
+  core:       { off: [0, 0, 0],         d: 0.0 },
+};
+// shut lines measured off the Hellcat (car space: L = 5 m, +z nose, +x left, y up)
+const zDoorF = y => 0.86 - (y - 0.22) * 0.16;
+const zDoorR = y => -0.455 - (y - 0.22) * 0.1;
+function panelOf(x, y, z, role) {
+  const ax = Math.abs(x), s = x > 0 ? 'L' : 'R';
+  if (role === 'head') return 'nose';
+  if (role === 'tail') return 'tail';
+  if (role === 'glass') {
+    if (z > 0.2 && ax < 0.78) return 'windshield';
+    if (z < -1.1 && ax < 0.72 && y > 0.9) return 'backlight';
+    if (ax > 0.55) return (z > zDoorR(y) ? 'door' : 'quarter') + s;
+    return 'core';
+  }
+  if (y < 0.2 && ax < 0.8 && z > -2.2 && z < 2.2) return 'core';
+  if (z > 2.32 || (y < 0.88 && z > 2.09 + Math.max(0, y - 0.52) * 0.47)) return 'nose';
+  if (z < -2.23 || (z < -1.97 && y < 0.575)) return 'tail';
+  if (z < -1.62 && y > 0.88 && ax < 0.7) return 'trunk';
+  if (role !== 'paint' && z > 1.0 && z < 2.32 && y > 0.86 && ax < 0.78) return 'hood';
+  if (y > 1.18 && ax < 0.56 && z > -1.2 && z < 0.34) return 'roof';
+  if (role !== 'paint' && ax < 0.7 && y > 0.2 && y < 1.16 && z > -1.4 && z < 1.0) return 'cabin';
+  const low = y < 1.02 || ax > 0.84;
+  if (z > zDoorF(y)) return low && ax > 0.5 && z < 2.4 ? 'fender' + s : 'core';
+  if (z > zDoorR(y)) return low && ax > 0.7 && y > 0.21 ? 'door' + s : 'core';
+  return low && ax > 0.58 && y > 0.2 ? 'quarter' + s : 'core';
+}
+const roleOf = name =>
+  name === 'material_8' ? 'paint' :
+  name === 'material_1' ? 'head' :
+  /^material_2/.test(name) ? 'tail' :
+  name === 'window_1' || name === 'window_2' ? 'glass' :
+  name === 'tires' ? 'tyre' :
+  name === 'Carro_Metal_Preto_1' ? 'rim' :
+  name === 'Color_B05_9' ? 'caliper' :
+  name === 'mirror' ? 'mirror' : 'trim';
+
+function buildCar(gltfScene) {
+  gltfScene.updateMatrixWorld(true);
+
+  // car space: the export is already y-up with the nose on +z; centre it, sit it on the floor, scale to 5 m
+  const raw = new THREE.Box3(), bb = new THREE.Box3();
+  gltfScene.traverse(o => { if (!o.isMesh) return; o.geometry.computeBoundingBox(); raw.union(bb.copy(o.geometry.boundingBox).applyMatrix4(o.matrixWorld)); });
+  const rsize = raw.getSize(new THREE.Vector3()), rc = raw.getCenter(new THREE.Vector3());
+  const s = 5.0 / rsize.z;
+  const norm = new THREE.Matrix4().makeScale(s, s, s).multiply(new THREE.Matrix4().makeTranslation(-rc.x, -raw.min.y, -rc.z));
+  const dims = { L: rsize.z * s, W: rsize.x * s, H: rsize.y * s };
+  rig.dims = dims;
+
+  // bake every mesh into car space once
+  const baked = [];
+  gltfScene.traverse(o => {
+    if (!o.isMesh || Array.isArray(o.material)) return;
+    if (o.material.name === 'Color_B02') return;            // invisible lens fill
+    const geo = toFloatGeometry(o.geometry, ['position', 'normal', 'uv']);
+    geo.applyMatrix4(norm.clone().multiply(o.matrixWorld));
+    if (!geo.getAttribute('normal')) geo.computeVertexNormals();
+    if (!geo.getAttribute('uv')) geo.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(geo.getAttribute('position').count * 2), 2));
+    baked.push({ geo, mat: o.material, role: roleOf(o.material.name) });
+  });
+
+  // wheels: the rims are one mesh, so each corner is found from the rim vertices in its quadrant
+  const quad = {};
+  for (const { geo, role } of baked) {
+    if (role !== 'rim') continue;
+    const P = geo.getAttribute('position');
+    for (let i = 0; i < P.count; i++) {
+      const x = P.getX(i), y = P.getY(i), z = P.getZ(i), k = (z > 0 ? 'Front' : 'Rear') + (x > 0 ? 'L' : 'R');
+      (quad[k] ||= new THREE.Box3()).expandByPoint(new THREE.Vector3(x, y, z));
+    }
+  }
+  for (const key of ['FrontL', 'FrontR', 'RearL', 'RearR']) {
+    const c = quad[key].getCenter(new THREE.Vector3());
+    const pivot = new THREE.Group(); pivot.position.copy(c); pivot.rotation.order = 'YXZ';
+    const caliper = new THREE.Group(); caliper.position.copy(c); caliper.rotation.order = 'YXZ';
+    carShake.add(pivot, caliper);
+    wheels.push({ key, pivot, caliper, front: key.startsWith('Front'), side: Math.sign(c.x) || 1, base: c.clone(), groups: new Map(), cgroups: new Map() });
+  }
+  const WR = 0.372;
+  const wheelAt = (x, y, z) => { for (const w of wheels) if (Math.abs(x - w.base.x) < 0.2 && (y - w.base.y) ** 2 + (z - w.base.z) ** 2 < WR * WR) return w; return null; };
+
+  // split every mesh by wheel / caliper / body panel
+  const buckets = new Map();
+  const heads = [];
+  const push = (map, key, mat, geo) => { let b = map.get(key); if (!b) map.set(key, b = { mat, geos: [] }); b.geos.push(geo); };
+  const e1 = new THREE.Vector3(), e2 = new THREE.Vector3();
+  const seamSrc = new THREE.MeshStandardMaterial({ name: 'seam', color: 0x060506, roughness: 0.9, metalness: 0 });
+  for (const { geo, mat, role } of baked) {
+    const P = geo.getAttribute('position'), I = geo.index.array, T = I.length / 3;
+    const hood = role === 'paint' ? hoodTriangles(geo) : null;
+    const groups = new Map();
+    for (let t = 0; t < T; t++) {
+      const a = I[t * 3], b = I[t * 3 + 1], c = I[t * 3 + 2];
+      const x = (P.getX(a) + P.getX(b) + P.getX(c)) / 3, y = (P.getY(a) + P.getY(b) + P.getY(c)) / 3, z = (P.getZ(a) + P.getZ(b) + P.getZ(c)) / 3;
+      const w = role === 'glass' ? null : wheelAt(x, y, z);
+      let key = w ? ((role === 'paint' || role === 'caliper') ? 'c:' : 'w:') + w.key : 'b:' + (hood && hood[t] ? 'hood' : panelOf(x, y, z, role));
+      // the walls inside the door shut lines face fore/aft; with no shadows they catch the low sun as hot lines
+      if (!w && role === 'paint' && Math.abs(x) > 0.75 && y > 0.2 && y < 1.0 && Math.min(Math.abs(z - zDoorF(y)), Math.abs(z - zDoorR(y))) < 0.045) {
+        e1.set(P.getX(b) - P.getX(a), P.getY(b) - P.getY(a), P.getZ(b) - P.getZ(a));
+        e2.set(P.getX(c) - P.getX(a), P.getY(c) - P.getY(a), P.getZ(c) - P.getZ(a));
+        if (Math.abs(e1.cross(e2).normalize().z) > 0.5) key += '|seam';
+      }
+      let l = groups.get(key); if (!l) groups.set(key, l = []); l.push(t);
+    }
+    for (const [key, tris] of groups) {
+      const g = subGeometry(geo, tris);
+      const [kind, rest] = key.split(':'), [id, seam] = rest.split('|');
+      if (kind === 'b') {
+        const p = PANELS[id], n = g.getAttribute('position').count;
+        const off = new Float32Array(n * 3), del = new Float32Array(n).fill(p.d);
+        for (let i = 0; i < n; i++) off.set(p.off, i * 3);
+        g.setAttribute('aOffset', new THREE.BufferAttribute(off, 3));
+        g.setAttribute('aDelay', new THREE.BufferAttribute(del, 1));
+        if (role === 'paint' && !seam) g.setAttribute('aDecal', new THREE.BufferAttribute(new Float32Array(n).fill(id === 'hood' || id === 'roof' || id === 'trunk' ? 1 : 0), 1));
+        push(buckets, seam ? 'seam' : mat.uuid, seam ? seamSrc : mat, g);
+      } else {
+        const w = wheels.find(q => q.key === id);
+        g.translate(-w.base.x, -w.base.y, -w.base.z);
+        push(kind === 'w' ? w.groups : w.cgroups, mat.uuid + role, { mat, role }, g);
+      }
+    }
+    if (role === 'head') {
+      const sum = { L: new THREE.Vector3(), R: new THREE.Vector3(), nL: 0, nR: 0 };
+      for (let i = 0; i < P.count; i++) {
+        const x = P.getX(i), y = P.getY(i), z = P.getZ(i);
+        if (z < dims.L * 0.38) continue;
+        if (x > 0) { sum.L.add(new THREE.Vector3(x, y, z)); sum.nL++; } else { sum.R.add(new THREE.Vector3(x, y, z)); sum.nR++; }
+      }
+      if (sum.nL) heads.push(sum.L.divideScalar(sum.nL));
+      if (sum.nR) heads.push(sum.R.divideScalar(sum.nR));
+    }
+  }
+
+  TA.value = taLettersTexture();
+  const caliperMat = new THREE.MeshPhysicalMaterial({ color: 0x8e1418, metalness: 0.2, roughness: 0.38, clearcoat: 1, clearcoatRoughness: 0.2 });
+  const tuneMaterial = (src, role, forBody) => {
+    let mat;
+    if (role === 'paint') {
+      if (!forBody) return caliperMat;
+      mat = rig.paintMat || (rig.paintMat = new THREE.MeshPhysicalMaterial({ color: 0x5c1d44, metalness: 0.38, roughness: 0.3, clearcoat: 1, clearcoatRoughness: 0.14 }));
+      if (forBody) { addPaint(mat); return mat; }
+    } else {
+      mat = src.clone();
+      if (mat.transparent && mat.roughness !== undefined) mat.roughness = Math.max(mat.roughness, 0.32);
+      if (role === 'tyre') { mat.metalness = 0; mat.roughness = 0.86; mat.color.setHex(0x161515); }
+      if (role === 'rim') { mat.roughness = 0.3; }
+      if (role === 'caliper' && forBody) mat.color.setHex(0x161517);   // the grey splitter bits read as raw plastic; the Widebody's are black
+      if (role === 'mirror') { mat.metalness = 1; mat.roughness = 0.04; mat.color.setHex(0xffffff); }
+      if (role === 'tail') { mat.emissiveMap = mat.map; mat.emissive = new THREE.Color(0xff1a2a); mat.emissiveIntensity = 0; rig.tailMats.push(mat); }
+      if (role === 'head') {
+        mat.emissive = new THREE.Color(0xffffff); mat.emissiveIntensity = 0; rig.lightAMats.push(mat);
+        if (forBody) { addHaloRings(mat); return mat; }
+      }
+    }
+    if (forBody) addExplode(mat);
+    return mat;
+  };
+
+  for (const { mat, geos } of buckets.values()) {
+    const merged = mergeGeometries(geos, false);
+    if (!merged) continue;
+    const mesh = new THREE.Mesh(merged, tuneMaterial(mat, roleOf(mat.name), true));
+    mesh.frustumCulled = false;
+    carShake.add(mesh);
+    pickMeshes.push(mesh);
+  }
+  const wheelMatCache = new Map();
+  for (const w of wheels) {
+    for (const [map, parent] of [[w.groups, w.pivot], [w.cgroups, w.caliper]]) {
+      for (const [k, { mat, geos }] of map) {
+        const merged = mergeGeometries(geos, false);
+        if (!merged) continue;
+        if (!wheelMatCache.has(k)) wheelMatCache.set(k, tuneMaterial(mat.mat, mat.role, false));
+        const mesh = new THREE.Mesh(merged, wheelMatCache.get(k));
+        parent.add(mesh);
+        pickMeshes.push(mesh);
+      }
+    }
+    w.groups = w.cgroups = null;
+  }
+
+  // soft contact shadow
+  const sc = document.createElement('canvas'); sc.width = sc.height = 256;
+  const sx = sc.getContext('2d');
+  const grd = sx.createRadialGradient(128, 128, 10, 128, 128, 128);
+  grd.addColorStop(0, 'rgba(0,0,0,0.85)'); grd.addColorStop(0.55, 'rgba(0,0,0,0.5)'); grd.addColorStop(1, 'rgba(0,0,0,0)');
+  sx.fillStyle = grd; sx.fillRect(0, 0, 256, 256);
+  const shadow = new THREE.Mesh(new THREE.PlaneGeometry(dims.W * 1.5, dims.L * 1.25), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(sc), transparent: true, depthWrite: false }));
+  shadow.rotation.x = -Math.PI / 2; shadow.position.y = 0.006;
+  carYaw.add(shadow);
+  // tight, dark contact patches so the tyres sit on the mirror instead of hovering over it
+  const tex = new THREE.CanvasTexture(sc);
+  rig.tyreShadows = wheels.map(w => {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(0.72, 0.95), new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, opacity: 1 }));
+    m.rotation.x = -Math.PI / 2; m.position.set(w.base.x, 0.008, w.base.z); m.renderOrder = 2;
+    carYaw.add(m); return { m, w };
+  });
+  rig.bodyShadow = shadow;
+  // the shut lines are real gaps: side-on against a bright sky you could see straight through both doors
+  const blind = new THREE.Mesh(new THREE.PlaneGeometry(4.4, 0.78), new THREE.MeshBasicMaterial({ color: 0x050405, side: THREE.DoubleSide }));
+  blind.rotation.y = Math.PI / 2; blind.position.set(0, 0.54, 0);
+  carShake.add(blind); rig.blind = blind;
+
+  buildLights(dims, heads);
+  buildHalos();
+  buildEngine(dims);
+
+  rig.anchors = {
+    engine: () => rig.engine.position.clone().add(new THREE.Vector3(-0.42 * ENGINE_SCALE, 0.3 * ENGINE_SCALE, 0)),
+    wheel: () => wheels.find(w => w.key === 'FrontL').pivot.position.clone().add(new THREE.Vector3(0.25, 0.2, 0)),
+    cabin: () => new THREE.Vector3(-dims.W * 0.12, dims.H * 0.92 + 1.0 * U.explode.value, -dims.L * 0.08),
+    exhaust: () => new THREE.Vector3(dims.W * 0.3, dims.H * 0.22, -dims.L * 0.5 - 0.9 * U.explode.value),
+  };
+}
+
+// the GLB has no engine geometry, so the star of the teardown is modelled here: the Hellcat's supercharged 6.2 HEMI,
+// built from bevelled solids and PBR metals so the env light reads it as cast, machined and plastic parts
+function castTexture(size, base, grain, seed = 1) {
+  const c = document.createElement('canvas'); c.width = c.height = size;
+  const x = c.getContext('2d'), img = x.createImageData(size, size);
+  let h = seed * 9301;
+  for (let i = 0; i < size * size; i++) {
+    h = (h * 16807) % 2147483647;
+    const n = base + ((h / 2147483647) - 0.5) * grain;
+    img.data[i * 4] = img.data[i * 4 + 1] = img.data[i * 4 + 2] = clamp(n, 0, 255); img.data[i * 4 + 3] = 255;
+  }
+  x.putImageData(img, 0, 0);
+  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(3, 3);
+  return t;
+}
+function buildEngine(dims) {
+  const g = new THREE.Group();
+  const aniso = renderer.capabilities.getMaxAnisotropy();
+  const castRough = castTexture(256, 150, 90, 3);
+  const castBump = castTexture(256, 128, 120, 7);
+  const orange = new THREE.MeshPhysicalMaterial({ color: 0xc8461a, roughness: 0.5, roughnessMap: castRough, bumpMap: castBump, bumpScale: 0.6, metalness: 0.1, clearcoat: 0.55, clearcoatRoughness: 0.28 });
+  const crinkle = new THREE.MeshPhysicalMaterial({ color: 0x0d0c0e, roughness: 0.55, roughnessMap: castRough, bumpMap: castBump, bumpScale: 1.4, metalness: 0.2, clearcoat: 0.3, clearcoatRoughness: 0.4 });
+  const alloy = new THREE.MeshStandardMaterial({ color: 0xc9c4bf, roughness: 0.26, metalness: 1, bumpMap: castBump, bumpScale: 0.25 });
+  const chrome = new THREE.MeshStandardMaterial({ color: 0xe6e2de, roughness: 0.08, metalness: 1 });
+  const header = new THREE.MeshStandardMaterial({ color: 0xa0897a, roughness: 0.22, metalness: 1 });
+  const plastic = new THREE.MeshStandardMaterial({ color: 0x1a191b, roughness: 0.62, metalness: 0 });
+  const rubber = new THREE.MeshStandardMaterial({ color: 0x121112, roughness: 0.85, metalness: 0 });
+  const wireMat = new THREE.MeshStandardMaterial({ color: 0x6a1414, roughness: 0.45, metalness: 0 });
+  const add = (geo, mat, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0, parent = g) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.rotation.set(rx, ry, rz); parent.add(m); return m; };
+  const rbox = (w, h, d, r = 0.02) => new RoundedBoxGeometry(w, h, d, 4, Math.min(r, w / 2.01, h / 2.01, d / 2.01));
+  const cyl = (r, l, seg = 40) => new THREE.CylinderGeometry(r, r, l, seg, 1);
+  const bolt = (x, y, z, parent, rx = 0, rz = 0) => add(new THREE.CylinderGeometry(0.011, 0.011, 0.012, 6), chrome, x, y, z, rx, 0, rz, parent);
+
+  // block, deck, oil pan, bellhousing
+  add(rbox(0.5, 0.36, 0.7, 0.03), orange, 0, 0, 0);
+  for (let i = 0; i < 4; i++) for (const s of [-1, 1]) add(rbox(0.02, 0.22, 0.1, 0.008), orange, s * 0.255, -0.02, -0.24 + i * 0.16); // freeze-plug bosses
+  add(rbox(0.42, 0.14, 0.64, 0.04), crinkle, 0, -0.25, -0.01);
+  for (let i = 0; i < 7; i++) for (const s of [-1, 1]) bolt(s * 0.21, -0.19, -0.27 + i * 0.09, g, 0, Math.PI / 2);
+  add(new THREE.CylinderGeometry(0.28, 0.26, 0.12, 48), alloy, 0, -0.05, -0.41, Math.PI / 2);
+
+  // the V: heads, ribbed valve covers wearing raised HEMI script, coil packs, fuel rails
+  const tc = document.createElement('canvas'); tc.width = 1024; tc.height = 256;
+  const tx = tc.getContext('2d');
+  tx.fillStyle = '#000'; tx.fillRect(0, 0, 1024, 256);
+  tx.fillStyle = '#fff'; tx.font = 'italic 900 190px "Arial Black", Arial, sans-serif'; tx.textAlign = 'center'; tx.textBaseline = 'middle';
+  tx.fillText('HEMI', 512, 138);
+  const hemiAlpha = new THREE.CanvasTexture(tc); hemiAlpha.anisotropy = aniso;
+  const hemiMat = new THREE.MeshStandardMaterial({ color: 0xd9d4ce, metalness: 1, roughness: 0.18, alphaMap: hemiAlpha, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 });
+  for (const s of [-1, 1]) {
+    const bank = new THREE.Group();
+    bank.position.set(s * 0.215, 0.215, 0); bank.rotation.z = -s * 0.6;
+    g.add(bank);
+    add(rbox(0.22, 0.16, 0.7, 0.025), orange, 0, 0, 0, 0, 0, 0, bank);
+    add(rbox(0.25, 0.1, 0.68, 0.04), crinkle, 0, 0.12, 0, 0, 0, 0, bank);
+    for (let i = 0; i < 6; i++) add(rbox(0.012, 0.022, 0.5, 0.005), crinkle, -0.09 + i * 0.036, 0.178, 0.04, 0, 0, 0, bank); // cast ribs
+    const plate = add(new THREE.PlaneGeometry(0.2, 0.05), hemiMat, -s * 0.0, 0.181, -0.26, -Math.PI / 2, 0, s > 0 ? Math.PI / 2 : -Math.PI / 2, bank);
+    plate.rotation.set(-Math.PI / 2, 0, -Math.PI / 2);
+    for (let i = 0; i < 8; i++) bolt((i % 2 ? 1 : -1) * 0.112, 0.17, -0.3 + Math.floor(i / 2) * 0.2, bank);
+    for (let i = 0; i < 4; i++) {
+      const z = -0.24 + i * 0.16;
+      add(rbox(0.05, 0.07, 0.07, 0.01), plastic, s * 0.15, 0.1, z, 0, 0, 0, bank);           // coil
+      add(cyl(0.01, 0.06, 12), wireMat, s * 0.15, 0.15, z, 0, 0, 0, bank);                  // connector
+    }
+    add(cyl(0.012, 0.66, 16), alloy, -s * 0.1, 0.06, 0, Math.PI / 2, 0, 0, bank);          // fuel rail
+    // exhaust manifolds: four polished runners per side into a collector
+    for (let i = 0; i < 4; i++) {
+      const z0 = -0.24 + i * 0.16;
+      const curve = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(s * 0.3, 0.06, z0), new THREE.Vector3(s * 0.39, 0.04, z0),
+        new THREE.Vector3(s * 0.43, -0.1, z0 * 0.7 - 0.06), new THREE.Vector3(s * 0.4, -0.26, -0.3)]);
+      add(new THREE.TubeGeometry(curve, 48, 0.026, 18), header);
+      add(new THREE.TorusGeometry(0.03, 0.008, 8, 20), header, s * 0.3, 0.06, z0, 0, Math.PI / 2, 0);
+    }
+    add(cyl(0.05, 0.16, 32), header, s * 0.4, -0.3, -0.36, Math.PI / 2);
+  }
+
+  // the Hellcat's 2.4 L twin-screw blower sits in the V: cast case, finned intercooler lid,
+  // SUPERCHARGED script, a front snout with its own pulley and the 92 mm throttle body feeding it
+  const st = document.createElement('canvas'); st.width = 1024; st.height = 160;
+  const sx2 = st.getContext('2d');
+  sx2.fillStyle = '#000'; sx2.fillRect(0, 0, 1024, 160);
+  sx2.fillStyle = '#fff'; sx2.font = 'italic 800 104px "Arial Black", Arial, sans-serif'; sx2.textAlign = 'center'; sx2.textBaseline = 'middle';
+  sx2.fillText('SUPERCHARGED', 512, 86);
+  const scAlpha = new THREE.CanvasTexture(st); scAlpha.anisotropy = aniso;
+  const scMat = new THREE.MeshStandardMaterial({ color: 0xd9d4ce, metalness: 1, roughness: 0.2, alphaMap: scAlpha, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 });
+  add(rbox(0.36, 0.2, 0.6, 0.06), crinkle, 0, 0.4, -0.02);                         // rotor case
+  add(rbox(0.3, 0.05, 0.54, 0.03), alloy, 0, 0.52, -0.04);                          // intercooler lid
+  for (let i = 0; i < 9; i++) add(rbox(0.28, 0.022, 0.016, 0.006), alloy, 0, 0.555, -0.26 + i * 0.055);
+  add(new THREE.PlaneGeometry(0.3, 0.046), scMat, 0, 0.568, 0.2, -Math.PI / 2, 0, 0);
+  for (const sx of [-1, 1]) for (let i = 0; i < 4; i++) bolt(sx * 0.165, 0.5, -0.24 + i * 0.15, g);
+  add(new THREE.CylinderGeometry(0.075, 0.09, 0.14, 40), crinkle, 0, 0.42, 0.33, Math.PI / 2);   // snout
+  add(cyl(0.07, 0.07, 48), alloy, 0, 0.47, 0.36, Math.PI / 2);                     // throttle body
+  add(new THREE.TorusGeometry(0.07, 0.009, 12, 48), chrome, 0, 0.47, 0.4);
+  const duct = new THREE.CatmullRomCurve3([new THREE.Vector3(0, 0.47, 0.4), new THREE.Vector3(0.05, 0.46, 0.52), new THREE.Vector3(0.22, 0.4, 0.62), new THREE.Vector3(0.32, 0.34, 0.66)]);
+  add(new THREE.TubeGeometry(duct, 64, 0.07, 32), rubber);
+  for (let k = 0; k < 9; k++) { const p = duct.getPointAt(0.12 + k * 0.08), tn = duct.getTangentAt(0.12 + k * 0.08); const r = add(new THREE.TorusGeometry(0.072, 0.006, 8, 40), rubber, p.x, p.y, p.z); r.lookAt(p.clone().add(tn)); }
+  add(rbox(0.28, 0.2, 0.24, 0.04), plastic, 0.42, 0.3, 0.66);
+
+  // front accessory drive: grooved pulleys, harmonic balancer, alternator, water pump, serpentine belt
+  const PZ = 0.39;
+  const pulley = (r, x, y, mat = alloy) => {
+    add(cyl(r, 0.05, 64), mat, x, y, PZ, Math.PI / 2);
+    for (let k = 0; k < 3; k++) add(new THREE.TorusGeometry(r, 0.004, 8, 64), mat, x, y, PZ - 0.016 + k * 0.016);
+    add(cyl(r * 0.28, 0.06, 24), chrome, x, y, PZ + 0.01, Math.PI / 2);
+    return new THREE.Vector3(x, y, PZ);
+  };
+  const P = [pulley(0.1, 0, -0.1), pulley(0.07, -0.18, 0.13), pulley(0.06, 0.19, 0.2), pulley(0.045, 0.05, 0.24, chrome), pulley(0.07, 0.02, 0.06), pulley(0.055, -0.04, 0.4)];
+  add(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([P[0], P[1], P[5], P[3], P[2], P[4]].map(v => v.clone().setZ(PZ)), true, 'catmullrom', 0.15), 160, 0.012, 10, true), rubber);
+  add(cyl(0.08, 0.14, 48), alloy, 0.19, 0.2, 0.3, Math.PI / 2);
+  for (let k = 0; k < 10; k++) add(rbox(0.006, 0.12, 0.012, 0.002), plastic, 0.19 + Math.cos(k * 0.63) * 0.081, 0.2 + Math.sin(k * 0.63) * 0.081, 0.3, Math.PI / 2, 0, k * 0.63);
+  add(cyl(0.075, 0.12, 40), alloy, -0.18, 0.13, 0.31, Math.PI / 2);
+  add(rbox(0.3, 0.26, 0.04, 0.02), orange, 0, 0.0, 0.36);
+  add(cyl(0.035, 0.08, 24), crinkle, -0.3, 0.33, 0.2, 0, 0, 0.5);  // oil filler
+  add(cyl(0.045, 0.012, 24), new THREE.MeshStandardMaterial({ color: 0xd8a018, roughness: 0.4 }), -0.32, 0.375, 0.2, 0, 0, 0.5);
+
+  g.traverse(o => { if (o.isMesh) o.frustumCulled = false; });
+  const y = 0.5, z = dims.L * 0.31;
+  g.position.set(0, y, z);
+  g.userData = { y, z };
+  g.visible = false;
+  carShake.add(g);
+  rig.engine = g;
+  const lamp = new THREE.PointLight(0xffd2a8, 0, 4, 1.6);
+  lamp.position.set(0.8, 1.4, 0.9);
+  g.add(lamp);
+  rig.engineLight = lamp;
+}
+
+function buildLights(dims, lightFront) {
+  const left = lightFront.filter(c => c.x > 0), right = lightFront.filter(c => c.x <= 0);
+  const avg = (arr, fallback) => arr.length ? arr.reduce((a, c) => a.add(c), new THREE.Vector3()).divideScalar(arr.length) : fallback;
+  const heads = [
+    avg(left, new THREE.Vector3(dims.W * 0.32, dims.H * 0.55, dims.L * 0.47)),
+    avg(right, new THREE.Vector3(-dims.W * 0.32, dims.H * 0.55, dims.L * 0.47)),
+  ];
+  const beamMat = new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+    uniforms: { uOpacity: { value: 0 }, uLen: { value: 8 }, uColor: { value: new THREE.Color(0xfff0dc) } },
+    vertexShader: `varying float vFade; varying vec3 vN; varying vec3 vV; uniform float uLen;
+      void main(){ vFade = 1.0 - clamp(position.z / uLen, 0.0, 1.0);
+        vec4 mv = modelViewMatrix * vec4(position,1.0); vN = normalize(normalMatrix * normal); vV = normalize(-mv.xyz);
+        gl_Position = projectionMatrix * mv; }`,
+    fragmentShader: `varying float vFade; varying vec3 vN; varying vec3 vV; uniform float uOpacity; uniform vec3 uColor;
+      void main(){ float edge = pow(abs(dot(vN, vV)), 2.2); float a = edge * vFade * vFade * uOpacity * 0.3; gl_FragColor = vec4(uColor * a, a); }`
+  });
+  rig.beamMat = beamMat;
+  for (const h of heads) {
+    const s = Math.sign(h.x) || 1;
+    const spot = new THREE.SpotLight(0xfff0dc, 0, 34, 0.36, 0.55, 1.2);
+    spot.position.copy(h).setZ(h.z + 0.14);
+    spot.target.position.set(h.x * 1.4, 0, h.z + 12);
+    carShake.add(spot, spot.target);
+    rig.spots.push(spot);
+
+    const geo = new THREE.ConeGeometry(1.3, 8, 40, 1, true);
+    geo.translate(0, -4, 0); geo.rotateX(-Math.PI / 2);
+    const beam = new THREE.Mesh(geo, beamMat);
+    beam.position.copy(h); beam.rotation.x = 0.07; beam.rotation.y = s * 0.05;
+    carShake.add(beam);
+  }
+}
+
+// the halos: light-pipe rings just behind each bezel lip (the outer lamps sit 1.5 cm further back),
+// so they stay full rings from every angle and leave with the nose in the teardown
+function buildHalos() {
+  const ring = (c, z, R, tube, s) => new THREE.TorusGeometry(R, tube, 10, 72).translate(s * c.x, c.y, z);
+  const mk = (geos) => {
+    const g = mergeGeometries(geos, false), n = g.getAttribute('position').count, p = PANELS.nose;
+    const off = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) off.set(p.off, i * 3);
+    g.setAttribute('aOffset', new THREE.BufferAttribute(off, 3));
+    g.setAttribute('aDelay', new THREE.BufferAttribute(new Float32Array(n).fill(p.d), 1));
+    const m = new THREE.MeshBasicMaterial({ color: 0x000000 });
+    addExplode(m);
+    const mesh = new THREE.Mesh(g, m);
+    mesh.frustumCulled = false;
+    carShake.add(mesh);
+    return m;
+  };
+  rig.haloOut = mk([1, -1].map(s => ring(RING_OUT.value, 2.251, 0.0445, 0.0058, s)));
+  rig.haloIn = mk([1, -1].map(s => ring(RING_IN.value, 2.267, 0.0415, 0.0055, s)));
+}
+
+/* ================= loading ================= */
+const pctEl = document.getElementById('pct');
+const barEl = document.querySelector('#loader .bar i');
+const manager = new THREE.LoadingManager();
+const loader = new GLTFLoader(manager);
+loader.setMeshoptDecoder(MeshoptDecoder);
+loader.load('assets/hellcat.min.glb', (gltf) => {
+  buildCar(gltf.scene);
+  setPaint(0, true);
+  setTimeout(() => document.getElementById('loader').classList.add('done'), 200);
+}, (e) => {
+  if (!e.total) return;
+  const p = Math.round((e.loaded / e.total) * 100);
+  pctEl.textContent = p.toLocaleString('en-US');
+  barEl.style.transform = `scaleX(${p / 100})`;
+}, (err) => {
+  console.error(err);
+  document.querySelector('#loader p').textContent = 'Couldn’t load the model. Serve the page from a local server and try again.';
+});
+
+/* ================= tyre smoke ================= */
+// camera-facing puffs (instanced quads, so they can grow huge without hitting point-size limits)
+const smoke = (() => {
+  const N = 420;
+  // one billow: fractal value noise inside a soft round falloff, so overlapping puffs stay wispy instead of a white wall
+  const S = 128, c = document.createElement('canvas'); c.width = c.height = S;
+  const x = c.getContext('2d'), img = x.createImageData(S, S);
+  const hash = (i, j) => { const h = Math.sin(i * 127.1 + j * 311.7) * 43758.5453; return h - Math.floor(h); };
+  const vnoise = (u, v) => {
+    const i = Math.floor(u), j = Math.floor(v), fu = u - i, fv = v - j, su = fu * fu * (3 - 2 * fu), sv = fv * fv * (3 - 2 * fv);
+    const a = hash(i, j), b = hash(i + 1, j), cc = hash(i, j + 1), d = hash(i + 1, j + 1);
+    return a + (b - a) * su + (cc - a) * sv + (a - b - cc + d) * su * sv;
+  };
+  for (let j = 0; j < S; j++) for (let i = 0; i < S; i++) {
+    const u = i / S, v = j / S, r = Math.hypot(u - 0.5, v - 0.5) * 2;
+    let n = 0;
+    for (let o = 0, f = 3, amp = 0.55; o < 4; o++, f *= 2, amp *= 0.5) n += amp * vnoise(u * f + o * 7.3, v * f + o * 3.1);
+    const fall = Math.max(0, 1 - r), soft = fall * fall * (3 - 2 * fall);
+    const k = (j * S + i) * 4;
+    img.data[k] = img.data[k + 1] = img.data[k + 2] = 255;
+    img.data[k + 3] = Math.round(255 * Math.min(1, Math.max(0, (n - 0.22) * 1.7)) * soft);
+  }
+  x.putImageData(img, 0, 0);
+  const base = new THREE.PlaneGeometry(1, 1);
+  const geo = new THREE.InstancedBufferGeometry();
+  geo.index = base.index; geo.setAttribute('position', base.getAttribute('position')); geo.setAttribute('uv', base.getAttribute('uv'));
+  const attr = (n) => new THREE.InstancedBufferAttribute(new Float32Array(N * n), n).setUsage(THREE.DynamicDrawUsage);
+  const iPos = attr(3), iSize = attr(1), iAlpha = attr(1), iRot = attr(1);
+  geo.setAttribute('iPos', iPos); geo.setAttribute('iSize', iSize); geo.setAttribute('iAlpha', iAlpha); geo.setAttribute('iRot', iRot);
+  geo.instanceCount = N;
+  const mat = new THREE.ShaderMaterial({
+    uniforms: { uTex: { value: new THREE.CanvasTexture(c) }, uColor: { value: new THREE.Color(0xc9b8b4) } },
+    vertexShader: `attribute vec3 iPos; attribute float iSize, iAlpha, iRot; varying vec2 vUv; varying float vA, vUp;
+      void main() {
+        vUv = uv; vA = iAlpha;
+        vec4 mv = viewMatrix * vec4(iPos, 1.0);
+        float c = cos(iRot), s = sin(iRot);
+        vec2 off = vec2(c * position.x - s * position.y, s * position.x + c * position.y);
+        vUp = off.y + 0.5;
+        mv.xy += off * iSize;
+        gl_Position = projectionMatrix * mv;
+      }`,
+    // lit by the sky: pale on top, shadowed underneath
+    fragmentShader: `uniform sampler2D uTex; uniform vec3 uColor; varying vec2 vUv; varying float vA, vUp;
+      void main() { float a = texture2D(uTex, vUv).a * vA; if (a < 0.004) discard; gl_FragColor = vec4(uColor * mix(0.58, 1.05, clamp(vUp, 0.0, 1.0)), a); }`,
+    transparent: true, depthWrite: false,
+  });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.frustumCulled = false; mesh.renderOrder = 3;
+  scene.add(mesh);
+  const P = Array.from({ length: N }, () => ({ p: new THREE.Vector3(), v: new THREE.Vector3(), age: 1, life: 1, s0: 0, s1: 0, r: 0, rv: 0 }));
+  let next = 0;
+  return {
+    emit(origin, back, side, sgn) {
+      const q = P[next]; next = (next + 1) % N;
+      // thrown back off the tread and rolling out of the arch, so it reads from the front three-quarter too
+      q.p.copy(origin).addScaledVector(side, sgn * Math.random() * 0.12);
+      q.v.copy(back).multiplyScalar(0.9 + Math.random() * 1.6).addScaledVector(side, sgn * (0.35 + Math.random() * 1.1));
+      q.v.y = 0.15 + Math.random() * 0.4;
+      q.age = 0; q.life = 2.0 + Math.random() * 1.8;
+      q.s0 = 0.3 + Math.random() * 0.3; q.s1 = 1.8 + Math.random() * 1.8;
+      q.r = Math.random() * 6.28; q.rv = (Math.random() - 0.5) * 0.8;
+    },
+    update(dt) {
+      for (let i = 0; i < N; i++) {
+        const q = P[i];
+        if (q.age >= q.life) { iAlpha.array[i] = 0; continue; }
+        q.age += dt;
+        const k = Math.min(1, q.age / q.life);
+        q.v.multiplyScalar(Math.exp(-dt * 1.3)); q.v.y += 0.3 * dt;
+        q.p.addScaledVector(q.v, dt); q.r += q.rv * dt;
+        iPos.array[i * 3] = q.p.x; iPos.array[i * 3 + 1] = q.p.y; iPos.array[i * 3 + 2] = q.p.z;
+        iSize.array[i] = lerp(q.s0, q.s1, 1 - (1 - k) * (1 - k));
+        iAlpha.array[i] = 0.5 * smooth(0, 0.1, k) * Math.pow(1 - k, 1.4);
+        iRot.array[i] = q.r;
+      }
+      iPos.needsUpdate = iSize.needsUpdate = iAlpha.needsUpdate = iRot.needsUpdate = true;
+    },
+  };
+})();
+
+/* ================= post ================= */
+const composer = new EffectComposer(renderer, new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: 4 }));
+composer.addPass(new RenderPass(scene, camera));
+const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.5, 0.45, 1.25);
+composer.addPass(bloom);
+composer.addPass(new OutputPass());
+
+/* ================= paint ================= */
+const paints = [
+  { name: 'Hellraisin', ar: 'Burgundy-eggplant that comes alive in the light', c: '#5c1d44' },
+  { name: 'Octane Red', ar: 'Deep pearl wine red', c: '#5e0b17' },
+  { name: 'Plum Crazy', ar: 'Unapologetic purple', c: '#5b2a86' },
+  { name: 'Go Mango', ar: 'Orange that lifts the mood', c: '#e2621b' },
+  { name: 'TorRed', ar: 'Fire-engine red', c: '#b50f1f' },
+  { name: 'Frostbite', ar: 'Icy metallic blue', c: '#1d4f9a' },
+  { name: 'White Knuckle', ar: 'Pearl white', c: '#e3e0d9' },
+  { name: 'Pitch Black', ar: 'Coal black', c: '#0c0b0e' },
+];
+let paintIdx = 0, bounce = 0, torqueRoll = 0;
+const paintTarget = new THREE.Color(paints[0].c);
+const swatchWrap = document.getElementById('swatches');
+paints.forEach((p, i) => {
+  const b = document.createElement('button');
+  b.style.setProperty('--c', p.c);
+  b.setAttribute('aria-label', p.name);
+  b.setAttribute('aria-pressed', i === 0);
+  b.addEventListener('click', () => setPaint(i));
+  swatchWrap.appendChild(b);
+});
+function setPaint(i, instant = false) {
+  paintIdx = (i + paints.length) % paints.length;
+  const p = paints[paintIdx];
+  paintTarget.set(p.c);
+  if (instant && rig.paintMat) rig.paintMat.color.copy(paintTarget);
+  document.getElementById('paintName').textContent = p.name;
+  document.getElementById('paintAr').textContent = p.ar;
+  document.getElementById('heroPaint').textContent = p.name;
+  [...swatchWrap.children].forEach((b, j) => b.setAttribute('aria-pressed', j === paintIdx));
+  if (!instant) bounce = 1;
+}
+
+/* ================= input ================= */
+const mouse = new THREE.Vector2(), mouseS = new THREE.Vector2();
+const cursorEl = document.getElementById('cursor');
+const cursorLabel = document.getElementById('cursorLabel');
+const cur = { x: innerWidth / 2, y: innerHeight / 2, tx: innerWidth / 2, ty: innerHeight / 2 };
+let pointerInside = false;
+if (finePointer) document.body.classList.add('has-cursor');
+function onMove(x, y) { mouse.set((x / innerWidth) * 2 - 1, -(y / innerHeight) * 2 + 1); cur.tx = x; cur.ty = y; pointerInside = true; }
+addEventListener('pointermove', e => onMove(e.clientX, e.clientY), { passive: true });
+
+let hovering = false, hoverMode = '';
+let dragDist = 0;
+const tapNdc = new THREE.Vector2();
+if (!finePointer) for (const el of document.querySelectorAll('[data-touch]')) el.textContent = el.dataset.touch;
+document.addEventListener('click', (e) => {
+  if (e.target.closest('a,button')) return;
+  if (hovering && hoverMode === 'paint' && dragDist < 6) { setPaint(paintIdx + 1); return; }
+  // touch has no hover: a tap on the car in the hero repaints it
+  if (!finePointer && hoverMode === 'paint' && pickMeshes.length) {
+    tapNdc.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
+    ray.setFromCamera(tapNdc, camera);
+    if (ray.intersectObjects(pickMeshes, false).length) setPaint(paintIdx + 1);
+  }
+});
+
+// studio drag-to-rotate
+const dragZone = document.getElementById('dragZone');
+let dragging = false, dragX = 0, dragYaw = 0, dragVel = 0;
+const beginDrag = (e) => { dragging = true; dragX = e.clientX; dragDist = 0; dragVel = 0; };
+dragZone.addEventListener('pointerdown', e => { beginDrag(e); dragZone.setPointerCapture(e.pointerId); });
+// hero: grab anywhere with the mouse (touch keeps scrolling)
+addEventListener('pointerdown', e => {
+  if (e.pointerType !== 'mouse' || e.button !== 0 || hoverMode !== 'paint' || e.target.closest('a,button,.drag-zone')) return;
+  beginDrag(e); e.preventDefault();
+});
+addEventListener('pointermove', e => {
+  if (!dragging) return;
+  const dx = e.clientX - dragX; dragX = e.clientX; dragDist += Math.abs(dx);
+  dragYaw += dx * 0.009; dragVel = dx * 0.009;
+});
+const endDrag = () => { dragging = false; };
+addEventListener('pointerup', endDrag);
+addEventListener('pointercancel', endDrag);
+
+/* ================= engine audio (Web Audio synth) ================= */
+// a watch-crown detent: a 1 ms bright snap, a small metallic ping and a softer knock, 25 ms in all
+function makeTickBuffer(ctx) {
+  const sr = ctx.sampleRate, n = Math.round(sr * 0.025), buf = ctx.createBuffer(1, n, sr), d = buf.getChannelData(0);
+  let hp = 0, prev = 0, peak = 0;
+  for (let i = 0; i < n; i++) {
+    const t = i / sr, nz = (Math.random() * 2 - 1) * Math.exp(-t / 0.0011);
+    hp = 0.86 * (hp + nz - prev); prev = nz;
+    const ping = Math.sin(6.2832 * 4400 * t) * Math.exp(-t / 0.004) * 0.5;
+    const knock = Math.sin(6.2832 * 1250 * t) * Math.exp(-t / 0.0022) * 0.35;
+    d[i] = (hp * 0.8 + ping + knock) * Math.min(1, t / 0.00015);
+    peak = Math.max(peak, Math.abs(d[i]));
+  }
+  for (let i = 0; i < n; i++) d[i] /= peak;
+  return buf;
+}
+let soundMuted = false;
+try { soundMuted = localStorage.getItem('redline-muted') === '1'; } catch {}
+const engine = {
+  on: false, ctx: null, rpm: 0, throttle: 0, startT: 0, level: 0, master: null, tickBuf: null, onState: null,
+  start() {
+    if (!this.ctx) this.build();
+    this.ctx.resume();
+    this.on = true; this.startT = performance.now() / 1000; this.rpm = 0;
+  },
+  stop() { this.on = false; },
+  mute(m) {
+    soundMuted = m;
+    try { localStorage.setItem('redline-muted', m ? '1' : '0'); } catch {}
+    if (this.master) this.master.gain.setTargetAtTime(m ? 0 : 1, this.ctx.currentTime, 0.04);
+  },
+  // one detent of the scroll "crown": pitched up going down the page, down going back up
+  tick(dir, vol) {
+    if (!this.ctx || this.ctx.state !== 'running' || soundMuted || vol < 0.003) return;
+    const s = this.ctx.createBufferSource(), g = this.ctx.createGain();
+    s.buffer = this.tickBuf;
+    s.playbackRate.value = (dir > 0 ? 1.06 : 0.92) * (0.96 + Math.random() * 0.08);
+    g.gain.value = vol * (0.85 + Math.random() * 0.3);
+    s.connect(g).connect(this.master);
+    s.start();
+  },
+  build() {
+    const ctx = this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const out = this.out = ctx.createGain(); out.gain.value = 0;
+    const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 4;
+    const an = this.analyser = ctx.createAnalyser(); an.fftSize = 512; this.buf = new Uint8Array(an.fftSize);
+    // everything ends in one master gain, so the sound toggle in the nav mutes the whole page
+    const master = this.master = ctx.createGain(); master.gain.value = soundMuted ? 0 : 1;
+    out.connect(comp).connect(an).connect(master).connect(ctx.destination);
+    this.tickBuf = makeTickBuffer(ctx);
+    ctx.onstatechange = () => this.onState && this.onState();
+
+    const lp = this.lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.Q.value = 1.2;
+    const shaper = ctx.createWaveShaper();
+    const curve = new Float32Array(1024);
+    for (let i = 0; i < 1024; i++) { const x = i / 512 - 1; curve[i] = Math.tanh(x * 3.2); }
+    shaper.curve = curve; shaper.oversample = '2x';
+    const lope = this.lope = ctx.createGain(); lope.gain.value = 0.7;
+    shaper.connect(lp).connect(lope).connect(out);
+
+    const mk = (type, g) => { const o = ctx.createOscillator(); o.type = type; const gn = ctx.createGain(); gn.gain.value = g; o.connect(gn).connect(shaper); o.start(); return o; };
+    this.o1 = mk('sawtooth', 0.55); this.o2 = mk('square', 0.35); this.o3 = mk('sine', 0.7);
+
+    const nb = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
+    const d = nb.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    const noise = ctx.createBufferSource(); noise.buffer = nb; noise.loop = true;
+    const bp = this.bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 0.9;
+    const ng = ctx.createGain(); ng.gain.value = 0.35;
+    noise.connect(bp).connect(ng).connect(shaper); noise.start();
+    // tyre squeal for the burnouts: two narrow bands of the same noise, straight into the compressor
+    const sq = this.sq = ctx.createBiquadFilter(); sq.type = 'bandpass'; sq.frequency.value = 2600; sq.Q.value = 7;
+    const sq2 = ctx.createBiquadFilter(); sq2.type = 'bandpass'; sq2.frequency.value = 3900; sq2.Q.value = 9;
+    const sqg = this.sqg = ctx.createGain(); sqg.gain.value = 0;
+    noise.connect(sq).connect(sqg); noise.connect(sq2).connect(sqg); sqg.connect(comp);
+
+    const lfo = this.lfo = ctx.createOscillator(); lfo.type = 'sine';
+    const lfoG = this.lfoG = ctx.createGain(); lfoG.gain.value = 0.3;
+    lfo.connect(lfoG).connect(lope.gain); lfo.start();
+  },
+  update(dt, audible, driveBoost, burn = 0) {
+    if (!this.ctx) return;
+    const t = performance.now() / 1000 - this.startT;
+    const idle = 780;
+    let target = 0;
+    if (this.on) {
+      if (t < 0.7) target = 260 + Math.sin(t * 38) * 90;          // starter cranking
+      else if (t < 1.25) target = 2100;                             // catch + flare
+      else target = idle + this.throttle * 5600 + driveBoost * 5200;
+    }
+    const k = target > this.rpm ? 3.2 : 1.5;
+    this.rpm += (target - this.rpm) * damp(dt, this.on ? k : 2.5);
+    const rpm = Math.max(this.rpm, 1);
+    const f = (rpm / 60) * 4 / 2;
+    const now = this.ctx.currentTime, tc = 0.03;
+    this.o1.frequency.setTargetAtTime(f, now, tc);
+    this.o2.frequency.setTargetAtTime(f * 0.5, now, tc);
+    this.o3.frequency.setTargetAtTime(f * 0.25, now, tc);
+    this.bp.frequency.setTargetAtTime(f * 3, now, tc);
+    this.lp.frequency.setTargetAtTime(220 + rpm * 0.32, now, tc);
+    this.lfo.frequency.setTargetAtTime(rpm / 60 / 2, now, tc);
+    this.lfoG.gain.setTargetAtTime(0.32 * (1 - clamp((rpm - idle) / 2500)), now, tc);
+    const vol = (this.on || this.rpm > 120 ? 0.55 + 0.45 * clamp(rpm / 6500) : 0) * audible;
+    this.out.gain.setTargetAtTime(vol, now, 0.08);
+    this.sqg.gain.setTargetAtTime(burn * 0.55 * audible, now, 0.06);
+    this.sq.frequency.setTargetAtTime(2350 + Math.sin(t * 9.3) * 220 + burn * 350, now, 0.04);
+
+    this.analyser.getByteTimeDomainData(this.buf);
+    let sum = 0; for (let i = 0; i < this.buf.length; i++) { const v = (this.buf[i] - 128) / 128; sum += v * v; }
+    this.level = Math.sqrt(sum / this.buf.length);
+  }
+};
+
+const pedal = document.getElementById('pedal');
+const pedalLabel = document.getElementById('pedalLabel');
+const killBtn = document.getElementById('kill');
+// browsers only allow audio after a gesture: warm the graph up (silent) on the first click or key,
+// so the drive-off can fire the engine by itself even if the pedal was never pressed
+const unlockAudio = () => { if (!engine.ctx) engine.build(); if (engine.ctx.state !== 'running') engine.ctx.resume(); };
+for (const ev of ['pointerdown', 'keydown', 'touchend']) addEventListener(ev, unlockAudio, { capture: true, passive: true });
+// the nav toggle shows what you can actually hear: muted, or no gesture yet to wake the audio, reads as off
+const sndBtn = document.getElementById('snd');
+const syncSound = () => sndBtn.setAttribute('aria-pressed', !soundMuted && !!engine.ctx && engine.ctx.state === 'running');
+engine.onState = syncSound;
+sndBtn.addEventListener('click', () => {
+  engine.mute(sndBtn.getAttribute('aria-pressed') === 'true');
+  unlockAudio();
+  syncSound();
+});
+const autoStart = () => {
+  if (engine.on || !engine.ctx || engine.ctx.state !== 'running') return;
+  engine.start(); pedalLabel.textContent = 'Hit the gas'; killBtn.hidden = false;
+};
+const pressDown = () => { if (!engine.on) return; engine.throttle = 1; pedal.classList.add('down'); };
+const pressUp = () => { engine.throttle = 0; pedal.classList.remove('down'); };
+pedal.addEventListener('pointerdown', (e) => {
+  if (!engine.on) { engine.start(); pedalLabel.textContent = 'Hit the gas'; killBtn.hidden = false; return; }
+  pedal.setPointerCapture(e.pointerId); pressDown();
+});
+pedal.addEventListener('pointerup', pressUp);
+pedal.addEventListener('pointercancel', pressUp);
+pedal.addEventListener('keydown', e => { if ((e.key === ' ' || e.key === 'Enter') && !e.repeat) { e.preventDefault(); if (!engine.on) { engine.start(); pedalLabel.textContent = 'Hit the gas'; killBtn.hidden = false; } else pressDown(); } });
+pedal.addEventListener('keyup', e => { if (e.key === ' ' || e.key === 'Enter') pressUp(); });
+killBtn.addEventListener('click', () => { engine.stop(); pressUp(); pedalLabel.textContent = 'Start engine'; killBtn.hidden = true; });
+
+/* ================= scroll timeline ================= */
+// my: on phones the car is framed whole and pushed down the screen by this much, under the copy
+const DEF = { theta: 2.45, r: 10.5, h: 2, lookY: 0.75, shift: 0, explode: 0, lights: 0, head: 0, drive: 0, follow: 0, mouse: 0, spin: 0, audio: 0, my: 0 };
+const KF = {
+  hero:   [[0, { mouse: 1, shift: 0.13, r: 11.5, h: 1.7, theta: 0.55, my: 0.15 }], [1, { theta: 0.8, r: 10.5, h: 1.1, lookY: 0.7, lights: 1, head: 1, mouse: 0.25, shift: 0.06, my: 0.13 }]],
+  // the teardown is shot from the nose: hood off, the HEMI climbs out of the bay
+  hemi:   [[0, { theta: 0.5, r: 13.5, h: 4.4, lookY: 1.1, shift: 0.15, lights: 0.5, head: 0.5, mouse: 0, my: 0.08 }],
+           [0.45, { explode: 1, theta: 0.32, r: 11, h: 3.4, lookY: 1.3 }], [0.68, { explode: 1, theta: -0.15 }], [1, { explode: 0, theta: -0.5, h: 3.2, lookY: 0.9 }]],
+  specs:  [[0, { theta: -1.88, r: 11.2, h: 0.8, lookY: 0.75, shift: 0.2, lights: 1, head: 1, my: 0.23 }], [1, { theta: -2.18, r: 10.6, h: 0.7 }]],
+  studio: [[0, { theta: -2.43, r: 12, h: 3, lookY: 0.6, shift: 0.0, spin: 1, lights: 0.6, head: 0.6, my: 0.06 }], [1, {}]],
+  // the roar is shown nose-first, the face turned up towards the pedal at 11 o'clock, halos pulsing with the revs
+  sound:  [[0, { theta: -5.6, r: 9.4, h: 1.1, lookY: 0.6, shift: 0.12, spin: 0, audio: 1, lights: 1, head: 1, my: 0.01 }], [1, { theta: -5.52 }]],
+  finale: [[0, { theta: -4.78, r: 12, h: 1.35, lookY: 0.75, audio: 1, shift: 0, my: 0 }], [0.15, {}],
+           [0.42, { drive: 0.32, follow: 1, theta: -5.06, r: 7.4, h: 0.55, lookY: 0.45 }],
+           [0.8, { drive: 0.68, follow: 1, theta: -4.61, r: 7.8, h: 0.65 }],
+           [1, { drive: 1, follow: 0.8, theta: -4.11, r: 11, h: 1.6, lookY: 0.7 }]],
+};
+const sections = [...document.querySelectorAll('.scene')];
+let frames = [];
+function layout() {
+  const vh = innerHeight;
+  frames = [];
+  let state = { ...DEF };
+  for (const el of sections) {
+    el.style.height = (+el.dataset.vh / 100) * vh + 'px';
+  }
+  for (const el of sections) {
+    const top = el.offsetTop, span = el.offsetHeight - vh;
+    el._top = top; el._span = span;
+    for (const [t, partial] of KF[el.id]) {
+      state = { ...state, ...partial };
+      frames.push({ y: top + t * span, s: state });
+    }
+  }
+}
+function sample(y) {
+  if (y <= frames[0].y) return frames[0].s;
+  for (let i = 1; i < frames.length; i++) {
+    const a = frames[i - 1], b = frames[i];
+    if (y <= b.y) {
+      const t = smooth(a.y, b.y, y);
+      const out = {};
+      for (const k in a.s) out[k] = lerp(a.s[k], b.s[k], t);
+      return out;
+    }
+  }
+  return frames[frames.length - 1].s;
+}
+const local = (el, y) => clamp((y - el._top) / el._span, -1, 2);
+
+function resize() {
+  const w = innerWidth, h = innerHeight;
+  renderer.setSize(w, h, false);
+  composer.setSize(w, h);
+  const pr = renderer.getPixelRatio() * 0.6;
+  mirror.getRenderTarget().setSize(Math.round(w * pr), Math.round(h * pr));
+  camera.aspect = w / h;
+  camera.fov = w / h < 0.8 ? 46 : 30;
+  camera.updateProjectionMatrix();
+  layout();
+}
+addEventListener('resize', resize);
+resize();
+
+/* ================= UI refs ================= */
+const fadeEls = [...document.querySelectorAll('[data-in]')].map(el => ({ el, sec: el.closest('.scene'), a: +el.dataset.in, b: +el.dataset.out }));
+const band = (v, a, b, f = 0.08) => Math.min(smooth(a, a + f, v), 1 - smooth(b - f, b, v));
+const callouts = [...document.querySelectorAll('.callout')];
+const stats = [...document.querySelectorAll('.stat')];
+const kmhEl = document.getElementById('kmh');
+const rpmEl = document.getElementById('rpm');
+const tachFill = document.getElementById('tachFill');
+const needle = document.getElementById('needle');
+{
+  const g = document.getElementById('tachTicks'), NS = 'http://www.w3.org/2000/svg';
+  for (let i = 0; i <= 14; i++) {
+    const a = (135 + (270 * i) / 14) * Math.PI / 180, major = i % 2 === 0;
+    const r1 = major ? 70 : 74, r2 = 79;
+    const l = document.createElementNS(NS, 'line');
+    l.setAttribute('x1', 100 + r1 * Math.cos(a)); l.setAttribute('y1', 100 + r1 * Math.sin(a));
+    l.setAttribute('x2', 100 + r2 * Math.cos(a)); l.setAttribute('y2', 100 + r2 * Math.sin(a));
+    g.appendChild(l);
+    if (major) {
+      const t = document.createElementNS(NS, 'text');
+      t.setAttribute('x', 100 + 58 * Math.cos(a)); t.setAttribute('y', 100 + 58 * Math.sin(a));
+      t.textContent = i / 2; g.appendChild(t);
+    }
+  }
+}
+const progBar = document.getElementById('bar');
+const navLinks = [...document.querySelectorAll('.links a[data-for]')];
+const specsSec = document.getElementById('specs'), finaleSec = document.getElementById('finale');
+
+/* ================= smooth scroll ================= */
+// wheel, keys and in-page links ride a critically damped spring: every move eases in and eases out instead
+// of jumping, and the page and the car read the same position each frame, so the copy and the car travel
+// together. Touch keeps the phone's own momentum scrolling.
+const glide = (() => {
+  const st = { x: scrollY, v: 0, to: scrollY, read: scrollY, w: 0, moving: false };
+  const WHEEL = 7.5, LINK = 3.6;
+  const maxY = () => Math.max(0, document.documentElement.scrollHeight - innerHeight);
+  const from = () => (st.moving ? st.to : scrollY);
+  const go = (y, w) => {
+    if (!st.moving) { st.x = scrollY; st.v = 0; }
+    st.to = clamp(y, 0, maxY()); st.w = w; st.moving = true;
+  };
+  if (!reduced) {
+    document.documentElement.style.scrollBehavior = 'auto';
+    addEventListener('wheel', (e) => {
+      // pinch-zoom and sideways swipes stay native
+      if (e.ctrlKey || e.defaultPrevented || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+      e.preventDefault();
+      go(from() + e.deltaY * (e.deltaMode === 1 ? 33 : e.deltaMode === 2 ? innerHeight * 0.9 : 1), WHEEL);
+    }, { passive: false });
+    addEventListener('keydown', (e) => {
+      if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey) return;
+      const el = e.target instanceof Element ? e.target : document.body;
+      if (el.closest('input, textarea, select, [contenteditable]')) return;
+      const page = innerHeight * 0.85;
+      let y;
+      switch (e.key) {
+        case 'ArrowDown': y = from() + 120; break;
+        case 'ArrowUp': y = from() - 120; break;
+        case 'PageDown': y = from() + page; break;
+        case 'PageUp': y = from() - page; break;
+        case ' ': if (el.closest('button, summary, [role="button"]')) return; y = from() + (e.shiftKey ? -page : page); break;
+        case 'Home': y = 0; break;
+        case 'End': y = maxY(); break;
+        default: return;
+      }
+      e.preventDefault();
+      go(y, Math.abs(y - scrollY) > innerHeight * 1.5 ? LINK : WHEEL);
+    });
+    document.addEventListener('click', (e) => {
+      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      const a = e.target instanceof Element ? e.target.closest('a[href^="#"]') : null;
+      const el = a && a.hash && document.getElementById(decodeURIComponent(a.hash.slice(1)));
+      if (!el) return;
+      e.preventDefault();
+      go(el.getBoundingClientRect().top + scrollY, LINK);
+      history.replaceState(null, '', a.hash);
+      if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '-1');
+      el.focus({ preventScroll: true });
+    });
+  }
+  return {
+    update(dt) {
+      // something else moved the page (touch, the scrollbar, find in page): follow it
+      if (Math.abs(scrollY - st.read) > 1.5) { st.x = st.to = scrollY; st.v = 0; st.moving = false; }
+      if (st.moving) {
+        st.to = Math.min(st.to, maxY());
+        const e = Math.exp(-st.w * dt), c = st.x - st.to, k = (st.v + st.w * c) * dt;
+        st.v = (st.v - st.w * k) * e;
+        st.x = st.to + (c + k) * e;
+        if (Math.abs(st.to - st.x) < 0.5 && Math.abs(st.v) < 5) { st.x = st.to; st.v = 0; st.moving = false; }
+        scrollTo(0, st.x);
+      }
+      st.read = scrollY;
+    },
+  };
+})();
+
+/* ================= loop ================= */
+const clock = new THREE.Clock();
+let yS = scrollY, cruiseDist = 0, wheelSpin = 0, lastZ = 0, lastDrive = 0, driveVel = 0, mouseYaw = 0;
+let burnSpin = 0, pedalBurn = 0, smokeCarry = 0, smokeFlip = 0;
+const TICK = 110;
+let tickCell = Math.floor(scrollY / TICK), tickT = 0, tickY = scrollY;
+const smokeAt = new THREE.Vector3(), smokeBack = new THREE.Vector3(), smokeSide = new THREE.Vector3(), smokeQ = new THREE.Quaternion();
+const camPos = new THREE.Vector3(), look = new THREE.Vector3(), hit = new THREE.Vector3(), v3 = new THREE.Vector3(), v3b = new THREE.Vector3(), qTmp = new THREE.Quaternion();
+let bloomFace = 1;
+const ray = new THREE.Raycaster();
+const ground = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+const narrow = () => innerWidth < 720 || innerWidth <= innerHeight * 0.8;
+// tall screens: back the camera off until the whole car (exploded parts included) fills ~85% of the width
+function fitRadius(theta, S) {
+  const L = 5 + 2.1 * S.explode, W = 2.17 + 2.6 * S.explode;
+  const rel = theta - carYaw.rotation.y, s = Math.abs(Math.sin(rel)), c = Math.abs(Math.cos(rel));
+  const span = lerp(L * s + W * c, Math.hypot(L, W), clamp(S.spin));
+  const tanH = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * camera.aspect;
+  return span / (2 * 1.1 * tanH) + (L * c + W * s) * 0.25;
+}
+
+function frame() {
+  const dt = Math.min(clock.getDelta(), 0.05);
+  const t = clock.elapsedTime;
+  // the scroll is already eased by glide, so the car reads it as is and stays locked to the copy
+  glide.update(dt);
+  yS = scrollY;
+  const S = sample(yS);
+  mouseS.lerp(mouse, reduced ? 1 : damp(dt, 4));
+
+  // scroll ticks: a soft detent every TICK px, like winding a watch crown. They fade out where the engine
+  // takes over (S.audio), get quieter on long fast glides and never run faster than ~15 a second
+  const cell = Math.floor(yS / TICK);
+  if (cell !== tickCell) {
+    const speed = Math.abs(yS - tickY) / Math.max(dt, 1e-3);
+    if (t - tickT > 0.065) { engine.tick(Math.sign(cell - tickCell), 0.07 * (1 - S.audio) * clamp(1.3 - speed / 5000, 0.4, 1)); tickT = t; }
+    tickCell = cell;
+  }
+  tickY = yS;
+
+  // camera
+  const nar = narrow();
+  const shift = nar ? 0 : -S.shift;
+  const theta = S.theta + mouseS.x * 0.1 * S.mouse;
+  const radius = nar ? Math.max(S.r, fitRadius(theta, S)) : S.r;
+  // the first stretch of the drive is a burnout: the rears spin on the spot before the car launches
+  const launch = clamp((S.drive - 0.06) / 0.94);
+  const carZ = launch * launch * 26, follow = carZ * S.follow;
+  camPos.set(Math.sin(theta) * radius, S.h + mouseS.y * 0.4 * S.mouse, Math.cos(theta) * radius + follow);
+  camera.position.lerp(camPos, damp(dt, 7));
+  look.set(0, S.lookY, follow);
+  camera.lookAt(look);
+  camera.setViewOffset(innerWidth, innerHeight, shift * innerWidth, nar ? -S.my * innerHeight : 0, innerWidth, innerHeight);
+
+  // drive
+  // last stretch: the car breaks away from the camera, melts into the haze and is gone
+  const sprint = smooth(0.84, 1, S.drive);
+  const z = carZ + sprint * sprint * 90;
+  carRoot.position.z = z;
+  carRoot.visible = sprint < 0.985;
+  // while the camera rides alongside, the slab seams stream past so the car still reads as moving
+  const kmh = 233 * Math.pow(launch, 0.75), cruise = (kmh / 3.6) * 0.45 * smooth(0.2, 0.9, S.follow);
+  cruiseDist += cruise * dt * (reduced ? 0 : 1);
+  grid.position.z = -(cruiseDist % 4);
+  const vz = (z - lastZ) / Math.max(dt, 1e-4); lastZ = z;
+  driveVel += (Math.abs(S.drive - lastDrive) / Math.max(dt, 1e-4) - driveVel) * damp(dt, 4); lastDrive = S.drive;
+
+  // yaw = mouse (hero) + turntable (studio)
+  const yawK = clamp(S.mouse + S.spin);
+  if (!dragging) { dragYaw += dragVel; dragVel *= Math.exp(-dt * 3); }
+  if (yawK < 0.05) { dragYaw = wrapAngle(dragYaw) * Math.exp(-dt * 4); dragVel = 0; }
+  carYaw.rotation.y = wrapAngle(dragYaw) * yawK;
+
+  // explode
+  U.explode.value = S.explode;
+  if (rig.blind) rig.blind.visible = S.explode < 0.01;
+  const wk = smooth(0.2, 0.85, S.explode);
+  if (rig.tyreShadows) for (const { m, w } of rig.tyreShadows) { m.position.x = w.pivot.position.x; m.material.opacity = 1 - wk * 0.6; }
+  for (const w of wheels) {
+    w.pivot.position.x = w.base.x + w.side * wk * 1.25;
+    w.pivot.position.y = w.base.y + wk * 0.08;
+    w.pivot.rotation.x = wheelSpin + (w.front ? 0 : burnSpin);
+    if (w.front) w.pivot.rotation.y += (clamp(dragVel * 14, -0.45, 0.45) * yawK - w.pivot.rotation.y) * damp(dt, 6);
+    w.caliper.position.copy(w.pivot.position); w.caliper.rotation.y = w.pivot.rotation.y;
+  }
+  wheelSpin += clamp((vz + cruise) / 0.36, -30, 30) * dt;
+
+  // burnouts: holding the pedal in the sound section, and the launch at the start of the drive
+  const padOn = engine.on && engine.throttle && S.drive < 0.005 && S.audio > 0.5 ? 1 : 0;
+  pedalBurn += (padOn - pedalBurn) * damp(dt, padOn ? 2.5 : 3);
+  const finBurn = smooth(0.003, 0.025, S.drive) * (1 - smooth(0.07, 0.13, S.drive));
+  const burn = reduced ? 0 : Math.max(pedalBurn, finBurn);
+  burnSpin += burn * 48 * dt;
+  if (burn > 0.02 && carRoot.visible) {
+    carYaw.getWorldQuaternion(smokeQ);
+    smokeBack.set(0, 0, -1).applyQuaternion(smokeQ); smokeSide.set(1, 0, 0).applyQuaternion(smokeQ);
+    smokeCarry += burn * 75 * dt;
+    while (smokeCarry >= 1) {
+      smokeCarry--;
+      const w = wheels[2 + (smokeFlip ^= 1)];
+      smokeAt.set(w.base.x + w.side * 0.05, 0.12, w.base.z - 0.3); carShake.localToWorld(smokeAt);
+      smoke.emit(smokeAt, smokeBack, smokeSide, w.side);
+    }
+  }
+  smoke.update(dt);
+
+  if (rig.engine) {
+    const e = S.explode, g = rig.engine, k = smooth(0.3, 0.95, e);
+    g.visible = e > 0.01;
+    // slides up and out over the nose so it is never buried under the lifted shell
+    g.position.y = g.userData.y + k * 0.5 + Math.sin(k * Math.PI) * 0.25;
+    g.position.z = g.userData.z + k * 1.35;
+    g.scale.setScalar(ENGINE_SCALE);
+    g.rotation.y = k * Math.sin(t * 0.4) * 0.12;
+    g.rotation.x = k * 0.1;
+    rig.engineLight.intensity = smooth(0.1, 0.6, e) * 5;
+  }
+
+  // engine
+  const fin = local(finaleSec, yS);
+  if (fin > 0.02 && fin < 1) autoStart();
+  engine.update(dt, S.audio, Math.max(clamp(driveVel * 6) * (S.drive > 0.01 ? 1 : 0), finBurn * 0.85), burn);
+  const lvl = engine.level;
+  const rev = clamp((engine.rpm - 780) / 5600);
+
+  // paint + body motion
+  if (rig.paintMat) rig.paintMat.color.lerp(paintTarget, damp(dt, 4));
+  bounce *= Math.exp(-dt * 3.5);
+  // a V8 idles with a soft, steady rumble; revs add a little and the body leans on torque, never a jitter
+  const vib = engine.on ? (0.0007 + rev * 0.0012 + lvl * 0.0015) : 0;
+  const hz = 22 + rev * 30;
+  torqueRoll += ((engine.on && engine.throttle ? rev * 0.008 : 0) - torqueRoll) * damp(dt, 3);
+  carShake.position.y = Math.sin(t * 18) * bounce * 0.03 + (Math.sin(t * hz) * 0.7 + Math.sin(t * hz * 1.37) * 0.3) * vib + (hovering ? Math.sin(t * 3) * 0.008 : 0);
+  carShake.rotation.z = Math.sin(t * 14) * bounce * 0.012 + Math.sin(t * hz * 0.5 + 1.3) * vib * 0.6 - torqueRoll;
+  carShake.rotation.x = -rev * 0.012 - burn * 0.012;
+  // the tail squirms while the rears are lit up
+  carShake.rotation.y = burn * (Math.sin(t * 1.9) * 0.018 + Math.sin(t * 13) * 0.004);
+
+  // lights (ignition flicker in hero, pulse with the engine in sound)
+  let L = S.lights;
+  if (!reduced && L > 0.02 && L < 0.75 && S.mouse > 0.1) L *= Math.sin(t * 47) * Math.sin(t * 13.3) > -0.2 ? 1 : 0.15;
+  const pulse = engine.on ? clamp(lvl * 2.2) * S.audio : 0;
+  let H = S.head;
+  if (!reduced && H > 0.02 && H < 0.75 && S.mouse > 0.1) H *= Math.sin(t * 47) * Math.sin(t * 13.3) > -0.2 ? 1 : 0.15;
+  const Lh = clamp(H * (1 + pulse * 0.6), 0, 1.6);
+  // beams are side-view candy; looking down their axis they flood the screen
+  v3.set(0, 0, 1).applyQuaternion(carYaw.getWorldQuaternion(qTmp));
+  v3b.copy(camera.position).sub(carRoot.position).normalize();
+  const faceK = 1 - smooth(0.15, 0.7, v3.dot(v3b));
+  bloomFace = faceK;
+  if (rig.beamMat) rig.beamMat.uniforms.uOpacity.value = Lh * faceK;
+  rig.spots.forEach(s => (s.intensity = Lh * lerp(0.5, 40, faceK * faceK)));
+  rig.lightAMats.forEach(m => (m.emissiveIntensity = Lh * lerp(0.6, 1.0, faceK)));
+  rig.tailMats.forEach(m => (m.emissiveIntensity = L * 0.7 + S.drive * 0.7 + pulse * 1.1));
+  if (rig.haloOut) {
+    rig.haloOut.color.setRGB(1.0, 0.95, 0.88).multiplyScalar(0.1 + Lh * 1.3);
+    rig.haloIn.color.setRGB(1.0, 0.44, 0.05).multiplyScalar(0.55 + Lh * 1.35);
+  }
+  scene.environmentIntensity = 1.0;
+  bloom.strength = lerp(0.4, lerp(0.45, 0.65, bloomFace), S.lights) + pulse * 0.35;
+
+  // hover
+  hoverMode = S.mouse > 0.6 ? 'paint' : S.spin > 0.6 ? 'drag' : '';
+  ray.setFromCamera(mouse, camera);
+  hovering = !!hoverMode && finePointer && pointerInside && S.drive < 0.05 && pickMeshes.length > 0 && ray.intersectObjects(pickMeshes, false).length > 0;
+  cursorEl.classList.toggle('on-car', hovering);
+  cursorLabel.textContent = hoverMode === 'drag' || dragging ? 'Drag ↔' : 'Drag or click';
+  const ck = reduced ? 1 : damp(dt, 14);
+  cur.x += (cur.tx - cur.x) * ck; cur.y += (cur.ty - cur.y) * ck;
+  cursorEl.style.transform = `translate3d(${cur.x}px, ${cur.y}px, 0)`;
+
+  // copy fades
+  for (const f of fadeEls) {
+    const o = band(local(f.sec, yS), f.a, f.b);
+    const fromBelow = local(f.sec, yS) < f.a + 0.2 ? 1 : -1;
+    f.el.style.opacity = o;
+    f.el.style.filter = o > 0.99 ? 'none' : `blur(${(1 - o) * 10}px)`;
+    f.el.style.translate = `0 ${(1 - o) * 26 * fromBelow}px`;
+    f.el.style.pointerEvents = o > 0.5 ? 'auto' : 'none';
+  }
+
+  // exploded callouts
+  if (rig.anchors.engine) {
+    const show = smooth(0.7, 0.95, S.explode);
+    for (const c of callouts) {
+      v3.copy(rig.anchors[c.dataset.anchor]());
+      carShake.localToWorld(v3);
+      v3.project(camera);
+      const x = (v3.x * 0.5 + 0.5) * innerWidth, y = (-v3.y * 0.5 + 0.5) * innerHeight;
+      c.style.transform = `translate(${x}px, ${y}px)`;
+      c.style.opacity = show;
+    }
+  }
+
+  // stat counters
+  const sp = local(specsSec, yS);
+  stats.forEach((el, i) => {
+    const k = smooth(0, 1, clamp(sp * 1.7 - i * 0.12));
+    const to = +el.dataset.to, from = +(el.dataset.from || 0), dec = +(el.dataset.dec || 0);
+    el.querySelector('b').textContent = lerp(from, to, k).toFixed(dec);
+    el.style.setProperty('--k', k);
+  });
+
+  // gauges
+  kmhEl.textContent = Math.round(kmh);
+  rpmEl.textContent = Math.round(engine.rpm / 10) * 10;
+  const rk = clamp(engine.rpm / 7000);
+  tachFill.style.strokeDasharray = `${(rk * 75).toFixed(2)} 100`;
+  needle.style.transform = `rotate(${135 + rk * 270}deg)`;
+  pedal.style.setProperty('--pulse', 1 + pulse * 0.25);
+  progBar.style.transform = `scaleX(${clamp(scrollY / (document.documentElement.scrollHeight - innerHeight))})`;
+
+  // active nav link
+  for (const a of navLinks) {
+    const sec = document.getElementById(a.dataset.for);
+    const l = local(sec, yS);
+    a.classList.toggle('on', l > -0.3 && l < 1.2);
+  }
+
+  composer.render();
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
