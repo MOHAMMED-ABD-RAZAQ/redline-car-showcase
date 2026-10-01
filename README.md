@@ -4,6 +4,8 @@ A scroll-driven 3D showcase for the 2020 Dodge Challenger SRT Hellcat Widebody i
 
 Designed and built by **[Mohammed Abd Alrazaq](https://github.com/MOHAMMED-ABD-RAZAQ)**.
 
+**Live demo: [redline-by-mohammed.vercel.app](https://redline-by-mohammed.vercel.app)**. Turn your sound on, then scroll.
+
 ![Redline hero: the Challenger at dusk next to the headline “The eggplant that roars.”](docs/preview.jpg)
 
 ## What it does
