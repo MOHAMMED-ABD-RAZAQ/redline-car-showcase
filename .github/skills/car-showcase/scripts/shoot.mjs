@@ -30,7 +30,9 @@ page.on('pageerror', (e) => errors.push(e.message));
 page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
 
 await page.goto(url);
-await page.waitForSelector('#loader.done', { state: 'attached', timeout: 60000 });
+await page.waitForSelector('#loader.ready', { timeout: 60000 });
+await page.click('#enterQuiet'); // the entry screen waits for a real click
+await page.waitForSelector('#loader.done', { state: 'attached' });
 await page.waitForTimeout(1200);
 for (const [id, p] of stops) {
   await page.evaluate(([id, p]) => {

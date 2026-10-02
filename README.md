@@ -2,8 +2,6 @@
 
 A scroll-driven 3D showcase for the 2020 Dodge Challenger SRT Hellcat Widebody in Hellraisin, built with three.js and Web Audio. It is one HTML file with no framework and no build step.
 
-Designed and built by **[Mohammed Abd Alrazaq](https://github.com/MOHAMMED-ABD-RAZAQ)**.
-
 **Live demo: [challenger3d.vercel.app](https://challenger3d.vercel.app)**. Turn your sound on, then scroll.
 
 ![Redline hero: the Challenger at dusk next to the headline “The eggplant that roars.”](docs/preview.jpg)
@@ -15,7 +13,7 @@ Designed and built by **[Mohammed Abd Alrazaq](https://github.com/MOHAMMED-ABD-R
 - **Specs and color studio.** Animated numbers, then a 360° turntable with the real paint names.
 - **Sound.** Start the engine, then press and hold the pedal to rev it into a burnout with smoke, squeal and a squirming tail. The engine is a Web Audio synth: no samples.
 - **Drive-off.** The rear tyres light up, the car launches, and the camera chases it into the haze.
-- **Scroll.** Wheel, keys and links glide on a critically damped spring. Every move eases in and eases out, and the copy and the car read the same position each frame. While you scroll it ticks softly, like winding a watch crown, and goes quiet where the engine takes over. One toggle in the nav mutes everything.
+- **Scroll.** Wheel, keys and links glide on a critically damped spring. Every move eases in and eases out, and the copy and the car read the same position each frame. While you scroll it ticks softly, like winding a watch crown, and goes quiet where the engine takes over. Browsers only allow sound after a click, so the page opens on an Enter with sound / Enter muted screen. One toggle in the nav mutes everything.
 - **Phones.** The copy sits on top, the whole car is framed below it, and the controls are at the bottom. Tap replaces hover.
 
 ![The teardown: panels floating away from the car and the engine lifted out](docs/teardown.jpg)

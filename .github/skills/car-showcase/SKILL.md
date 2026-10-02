@@ -182,4 +182,4 @@ gl_FragColor = vec4(dbg, 1.0);
   - the reduced-motion path (no glide, instant camera)
   - the touch copy (`data-touch`)
   - tap-to-repaint on phones
-- **Audio needs a user gesture.** `unlockAudio` warms it up on the first click or key. The sound toggle shows "off" until the page can actually be heard.
+- **Audio needs a real click, tap or key.** Scrolling doesn't count, and scripted clicks are ignored. That is why the page opens on an "Enter with sound / Enter muted" screen once the model has loaded. `unlockAudio` wakes the audio on that click, and the sound toggle shows "off" until the page can actually be heard.
